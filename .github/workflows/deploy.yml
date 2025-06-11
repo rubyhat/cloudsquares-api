@@ -1,0 +1,30 @@
+name: Deploy to Dev VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: SSH Deploy to VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout репозитория
+        uses: actions/checkout@v3
+
+#      - name: 🔐 Подключение и деплой по SSH
+#        uses: appleboy/ssh-action@master
+#        with:
+#          host: ${{ secrets.VPS_HOST }}
+#          username: ${{ secrets.VPS_USER }}
+#          key: ${{ secrets.VPS_PRIVATE_KEY }}
+#          script: |
+#            echo "🛠 Начинаем деплой cloudsquares-api..."
+#            cd ~/apps/cloudsquares-api
+#            git pull origin main
+#            make build-prod
+#            make db-migrate-prod
+#            make up-prod
+#            echo "✅ Деплой завершён"

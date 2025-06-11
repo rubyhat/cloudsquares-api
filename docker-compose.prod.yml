@@ -1,0 +1,40 @@
+services:
+  web:
+    build:
+      context: .
+      args:
+        TARGET_PLATFORM: ${TARGET_PLATFORM:-linux/amd64}
+    container_name: cloudsquares-api
+    command: bundle exec rails server -b 0.0.0.0 -p 3000
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - .env.production
+    environment:
+      RAILS_ENV: production
+    restart: always
+    ports:
+      - "3000:3000"  # temp test
+    # no ports exposed, handled by nginx
+
+  db:
+    image: postgres:17
+    container_name: cloudsquares-db
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+  redis:
+    image: redis:7.4
+    container_name: cloudsquares-redis
+    restart: always
+    # НЕ открывай порты наружу!
+    # ports: []
+
+volumes:
+  postgres_data:

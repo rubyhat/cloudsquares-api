@@ -1,0 +1,39 @@
+services:
+  web-test:
+    build:
+      context: .
+      args:
+        TARGET_PLATFORM: ${TARGET_PLATFORM:-linux/arm64}
+    volumes:
+      - ./swagger:/app/swagger
+    container_name: cloudsquares-api-test
+    command: [ "sleep", "infinity" ]
+    env_file:
+      - .env.test
+    environment:
+      RAILS_ENV: test
+    depends_on:
+      - db
+      - redis
+  # 📦 Rails-приложение (API-only backend)
+  web:
+    # Очищаем server.pid перед запуском
+    command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails server -b 0.0.0.0 -p 3001"
+    # В development окружении монтируем локальную папку внутрь контейнера
+    # Это позволяет видеть все изменения в коде в реальном времени (hot reload)
+    volumes:
+      - .:/app
+      - /app/vendor
+
+    # Прокидываем порт 3000 наружу, чтобы приложение было доступно по http://localhost:3000
+    ports:
+      - "3001:3001"
+
+  redis:
+    ports:
+      - "6378:6379"
+
+  db:
+    # Открываем порт PostgreSQL для подключения снаружи (например, через Postico)
+    ports:
+      - "5431:5432"

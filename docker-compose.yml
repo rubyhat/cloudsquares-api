@@ -1,0 +1,70 @@
+# TODO:
+# Убрать volumes: .:/app — это только для dev
+# Не пробрасывать порты напрямую (использовать NGINX)
+# Добавить nginx как reverse proxy
+# Добавить TLS (например, через Let's Encrypt)
+# Настроить redis.conf с requirepass и bind 127.0.0.1
+# Настроить config/environments/production.rb + assets:precompile
+
+services:
+  # 📦 Rails-приложение (API-only backend)
+  web:
+    build:
+      context: .
+      # Собираем образ из текущей директории, используя Dockerfile
+      args:
+        TARGET_PLATFORM: ${TARGET_PLATFORM:-linux/arm64}
+    container_name: cloudsquares-api
+    command: bundle exec rails server -b 0.0.0.0 -p 3000
+    # Запуск Rails-сервера. Важно слушать 0.0.0.0 для доступа извне контейнера
+
+    depends_on:
+      - db
+      - redis
+      # Гарантируем, что Redis и PostgreSQL будут запущены до старта Rails-приложения
+
+    env_file:
+      - .env.${RAILS_ENV:-development}
+      # Автоматически подключаем файл окружения, например .env.development или .env.production
+
+    environment:
+      RAILS_ENV: ${RAILS_ENV:-development}
+      # Указываем режим запуска (development или production)
+      # Значение можно переопределить при запуске через переменную окружения RAILS_ENV
+    healthcheck:
+      test: ["CMD-SHELL", "curl -H 'Host: api.cloudsquares.kz' -f http://localhost:3000/status"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # 🐘 База данных PostgreSQL
+  db:
+    image: postgres:17
+    container_name: cloudsquares-db
+    restart: always
+    # Автоматический перезапуск базы данных при сбое
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Храним данные базы вне контейнера, чтобы не потерять их при пересборке образа
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Настраиваем параметры базы через переменные из .env файла
+
+  # 🧠 Redis — используется для кэша, сессий, Sidekiq и хранения refresh токенов
+  redis:
+    image: redis:7.4
+    container_name: cloudsquares-redis
+    restart: always
+    # Обеспечиваем стабильную работу и автоперезапуск
+
+    ports:
+      - "6378:6379"
+      # Открываем порт Redis (в dev можно, в продакшене — закрыть через firewall или убрать entirely)
+
+volumes:
+  postgres_data:
+  # Объявляем volume для PostgreSQL, чтобы данные не терялись между запусками

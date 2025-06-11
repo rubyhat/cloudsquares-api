@@ -1,0 +1,18 @@
+blank_issues_enabled: false  # отключаем пустые issue
+contact_links: []
+
+issue_templates:
+  - name: 🐞 Bug report
+    description: Сообщи об ошибке в fastyshop-backend
+    labels: [bug]
+    file: bug_report.yml
+
+  - name: ✨ Feature request
+    description: Предложи новую возможность или улучшение
+    labels: [feature]
+    file: feature_request.yml
+
+  - name: 🧹 Tech debt / Refactor
+    description: Задачи на рефакторинг, удаление дублирующего кода или улучшение архитектуры
+    labels: [tech-debt, refactor]
+    file: tech_debt.yml
