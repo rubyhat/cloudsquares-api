@@ -45,7 +45,7 @@ group :development, :test do
   # 🧪 Testing
   gem "factory_bot_rails", "~> 6.4", ">= 6.4.4"
   gem "faker", "~> 3.5", ">= 3.5.1"
-  gem "rspec-rails", "~> 7.1", ">= 7.1.1"
+  gem "rspec-rails", "~> 8.0"
   gem "rswag", "~> 2.16"
   gem "rswag-ui", "~> 2.16"
   gem "rswag-api", "~> 2.16"

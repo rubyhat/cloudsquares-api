@@ -146,6 +146,7 @@ GEM
       i18n (>= 1.8.11, < 2)
     ffi (1.17.2-aarch64-linux-gnu)
     ffi (1.17.2-arm64-darwin)
+    ffi (1.17.2-x86_64-linux-gnu)
     fugit (1.11.1)
       et-orbi (~> 1, >= 1.2.11)
       raabro (~> 1.4)
@@ -216,6 +217,8 @@ GEM
     nokogiri (1.18.8-aarch64-linux-gnu)
       racc (~> 1.4)
     nokogiri (1.18.8-arm64-darwin)
+      racc (~> 1.4)
+    nokogiri (1.18.8-x86_64-linux-gnu)
       racc (~> 1.4)
     ostruct (0.6.1)
     pagy (9.3.4)
@@ -302,10 +305,10 @@ GEM
     rspec-mocks (3.13.5)
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.13.0)
-    rspec-rails (7.1.1)
-      actionpack (>= 7.0)
-      activesupport (>= 7.0)
-      railties (>= 7.0)
+    rspec-rails (8.0.0)
+      actionpack (>= 7.2)
+      activesupport (>= 7.2)
+      railties (>= 7.2)
       rspec-core (~> 3.13)
       rspec-expectations (~> 3.13)
       rspec-mocks (~> 3.13)
@@ -395,6 +398,7 @@ GEM
     thruster (0.1.13)
     thruster (0.1.13-aarch64-linux)
     thruster (0.1.13-arm64-darwin)
+    thruster (0.1.13-x86_64-linux)
     timeout (0.4.3)
     tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
@@ -414,6 +418,7 @@ PLATFORMS
   aarch64-linux
   aarch64-linux-gnu
   arm64-darwin-23
+  x86_64-linux
 
 DEPENDENCIES
   active_model_serializers (~> 0.10.15)
@@ -439,7 +444,7 @@ DEPENDENCIES
   rails (~> 8.0.2)
   ransack (~> 4.3)
   redis (~> 5.4)
-  rspec-rails (~> 7.1, >= 7.1.1)
+  rspec-rails (~> 8.0)
   rswag (~> 2.16)
   rswag-api (~> 2.16)
   rswag-ui (~> 2.16)
