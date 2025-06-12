@@ -18,6 +18,9 @@ Rails.application.routes.draw do
 
       # Пользователи
       resources :users
+
+      # Агентства недвижимости
+      resources :agencies, only: %i[index show create update destroy]
     end
   end
 

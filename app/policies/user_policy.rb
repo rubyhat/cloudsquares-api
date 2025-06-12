@@ -40,7 +40,7 @@ class UserPolicy < ApplicationPolicy
   class Scope < Scope
     def resolve
       return scope.all if admin? || admin_manager?
-      return scope.where(agency_id: user.agency_id) if agent_admin?
+      # return scope.where(agency_id: user.agency_id) if agent_admin?
 
       scope.where(id: user.id) # только сам себя
     end

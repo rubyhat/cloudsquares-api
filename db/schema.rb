@@ -10,9 +10,25 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_06_12_195517) do
+ActiveRecord::Schema[8.0].define(version: 2025_06_12_200400) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "agencies", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "title", null: false
+    t.string "slug", null: false
+    t.string "custom_domain"
+    t.boolean "is_blocked", default: false, null: false
+    t.datetime "blocked_at"
+    t.boolean "is_active", default: true, null: false
+    t.datetime "deleted_at"
+    t.uuid "created_by_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_agencies_on_created_by_id"
+    t.index ["custom_domain"], name: "index_agencies_on_custom_domain", unique: true
+    t.index ["slug"], name: "index_agencies_on_slug", unique: true
+  end
 
   create_table "countries", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "title", null: false
@@ -46,4 +62,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_12_195517) do
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["phone"], name: "index_users_on_phone", unique: true
   end
+
+  add_foreign_key "agencies", "users", column: "created_by_id"
 end
