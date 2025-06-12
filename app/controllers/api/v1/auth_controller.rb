@@ -74,7 +74,7 @@ module Api
           TokenStorageRedis.clear(user_id: payload["sub"])
         end
 
-        head :ok
+        render_success(key: "auth.logout", message: "Вы вышли из системы")
       end
 
       private

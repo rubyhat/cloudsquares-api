@@ -3,7 +3,7 @@
 module Api
   module V1
     class UsersController < BaseController
-      skip_before_action :authenticate_user!, only: %i[create show]
+      skip_before_action :authenticate_user!, only: %i[create show], if: -> { params[:user][:role] == "user" rescue false }
       before_action :set_user, only: %i[show update destroy]
 
       # GET /api/v1/me
@@ -11,7 +11,9 @@ module Api
       # Возвращает текущего авторизованного пользователя.
       # Использует current_user, установленный в BaseController.
       def me
-        authorize current_user, :me?
+        user = current_user
+        return render_unauthorized unless user
+        authorize user, :me?
 
         render json: current_user, status: :ok
       end
@@ -37,28 +39,33 @@ module Api
 
       # POST /api/v1/users
       # Создание нового пользователя
+      # POST /api/v1/users
       def create
         @user = User.new(user_params)
-        authorize @user
 
-        # Запрет на создание admin
-        if @user.admin?
+        if @user.role == "admin" || @user.role == "admin_manager"
           return render_forbidden(message: "Создание admin запрещено", key: "users.admin_not_allowed")
         end
 
-        if @user.save
-          tokens = JwtService.generate_tokens(@user)
-          TokenStorageRedis.save(user_id: @user.id, iat: tokens[:iat])
+        if @user.role == "user"
+          # Публичная регистрация без авторизации
+          return create_public_user
+        end
 
-          render json: {
-            user: UserSerializer.new(@user, scope: @user),
-            access_token: tokens[:access_token],
-            refresh_token: tokens[:refresh_token]
-          }, status: :created
+        # Все остальные роли требуют авторизации
+        authorize @user
+
+        # TODO: Проверить, что current_user может создавать пользователя с этой ролью
+        # TODO: Проверить лимиты по тарифу на количество сотрудников
+        # TODO: Присвоить agency_id текущего пользователя, если нужно
+
+        if @user.save
+          render json: @user, status: :created
         else
           render_validation_errors(@user)
         end
       end
+
 
       # PATCH/PUT /api/v1/users/:id
       # Обновление пользователя
@@ -98,6 +105,23 @@ module Api
       end
 
       private
+
+      # Создание публичного пользователя (без авторизации)
+      def create_public_user
+        if @user.save
+          tokens = JwtService.generate_tokens(@user)
+          TokenStorageRedis.save(user_id: @user.id, iat: tokens[:iat])
+
+          render json: {
+            user: UserSerializer.new(@user, scope: @user),
+            access_token: tokens[:access_token],
+            refresh_token: tokens[:refresh_token]
+          }, status: :created
+        else
+          render_validation_errors(@user)
+        end
+      end
+
 
       # Установка пользователя по ID
       def set_user

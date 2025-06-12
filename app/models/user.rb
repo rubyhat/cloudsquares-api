@@ -26,12 +26,13 @@ class User < ApplicationRecord
             presence: true,
             uniqueness: true,
             format: {
-              with: /\A\+\d{10,15}\z/,
-              message: "должен быть в формате +71234567890"
+              with: /\A\d{10,15}\z/,
+              message: "должен быть в формате 71234567890"
             }
 
   validates :country_code, inclusion: { in: VALID_COUNTRY_CODES }
   validates :email, presence: true, uniqueness: true
+  validates :first_name, presence: true
   validates :password_digest, presence: true
   validate :validate_password_complexity, if: -> { password.present? } # Валидация сложности пароля
 
