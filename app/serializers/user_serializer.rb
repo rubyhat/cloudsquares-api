@@ -2,6 +2,7 @@ class UserSerializer < ActiveModel::Serializer
   attributes :id, :phone, :role, :country_code, :is_active, :first_name, :last_name, :middle_name
 
   attribute :email, if: :show_email?
+  attribute :deleted_at, if: -> { object.is_active == false }
 
   def show_email?
     current_user = scope || instance_options[:current_user]

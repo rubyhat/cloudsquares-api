@@ -8,6 +8,44 @@
 #     MovieGenre.find_or_create_by!(name: genre_name)
 #   end
 
+puts "🌍 Добавляем страны..."
+
+Country.create!(
+  [
+    {
+      title: "Казахстан",
+      code: "KZ",
+      phone_prefixes: ["+7"],
+      is_active: true,
+      locale: "ru",
+      timezone: "Asia/Almaty",
+      position: 1,
+      default_currency: "KZT"
+    },
+    {
+      title: "Россия",
+      code: "RU",
+      phone_prefixes: ["+7"],
+      is_active: true,
+      locale: "ru",
+      timezone: "Europe/Moscow",
+      position: 2,
+      default_currency: "RUB"
+    },
+    {
+      title: "Беларусь",
+      code: "BY",
+      phone_prefixes: ["+375"],
+      is_active: true,
+      locale: "ru",
+      timezone: "Europe/Minsk",
+      position: 3,
+      default_currency: "BYN"
+    }
+  ]
+)
+
+
 puts "👑 Создаём пользователей по ролям..."
 
 users = [
