@@ -37,7 +37,6 @@ module Api
         render json: @user, status: :ok
       end
 
-      # POST /api/v1/users
       # Создание нового пользователя
       # POST /api/v1/users
       def create
@@ -52,19 +51,49 @@ module Api
           return create_public_user
         end
 
-        # Все остальные роли требуют авторизации
         authorize @user
+        return render_unauthorized unless current_user
 
-        # TODO: Проверить, что current_user может создавать пользователя с этой ролью
-        # TODO: Проверить лимиты по тарифу на количество сотрудников
-        # TODO: Присвоить agency_id текущего пользователя, если нужно
-
-        if @user.save
-          render json: @user, status: :created
-        else
-          render_validation_errors(@user)
+        if current_user&.agencies&.empty?
+          return render_error(
+          key: "users.create_user_in_agency",
+          message: "Чтобы добавить сотрудника, необходимо сначала создать Агентство",
+          status: :unprocessable_entity,
+          code: 422
+        )
         end
+
+        # Ограничим создание только в рамках агентства текущего пользователя
+        return render_forbidden(message: "Нет агентства по умолчанию") unless @current_agency
+
+        # ⚠️ TODO: временная проверка лимита (захардкожено 5 сотрудников)
+        if @current_agency.users.count >= 5
+          return render_error(
+            key: "users.limit_exceeded",
+            message: "Достигнут лимит сотрудников для агентства",
+            status: :unprocessable_entity,
+            code: 422
+          )
+        end
+
+        # Сохраняем пользователя и привязываем к агентству
+        ActiveRecord::Base.transaction do
+          @user.save!
+
+          UserAgency.create!(
+            user: @user,
+            agency: @current_agency,
+            is_default: true,  # У нового пользователя — всегда по умолчанию
+            status: :active
+          )
+        end
+
+        render json: @user, status: :created
+
+      rescue ActiveRecord::RecordInvalid
+        render_validation_errors(@user)
       end
+
 
 
       # PATCH/PUT /api/v1/users/:id
@@ -105,6 +134,11 @@ module Api
       end
 
       private
+      # Определение Агентства пользователя
+      def current_agency_for_user(user)
+        user&.user_agencies&.find_by(is_default: true)&.agency
+      end
+
 
       # Создание публичного пользователя (без авторизации)
       def create_public_user

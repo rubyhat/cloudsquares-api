@@ -24,12 +24,24 @@ module Api
         @agency.created_by = current_user
         authorize @agency
 
-        if @agency.save
-          render json: @agency, serializer: AgencySerializer, status: :created
-        else
-          render_validation_errors(@agency)
+        ActiveRecord::Base.transaction do
+          @agency.save!
+
+          # Привязка пользователя к агентству
+          UserAgency.create!(
+            user: current_user,
+            agency: @agency,
+            is_default: true,
+            status: :active
+          )
         end
+
+        render json: @agency, serializer: AgencySerializer, status: :created
+
+      rescue ActiveRecord::RecordInvalid => e
+        render_validation_errors(@agency)
       end
+
 
       # PATCH/PUT /api/v1/agencies/:id
       def update

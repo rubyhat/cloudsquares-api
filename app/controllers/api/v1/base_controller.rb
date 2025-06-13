@@ -8,11 +8,26 @@ module Api
 
       rescue_from Pundit::NotAuthorizedError, with: :render_pundit_forbidden
 
-      before_action :authenticate_user!
+      before_action :authenticate_user!, unless: -> { public_access_allowed? }
       before_action { Current.user = current_user }
+      before_action :set_current_agency
 
+      def public_access_allowed?
+        # Переопределяется в контроллерах
+        false
+      end
 
       private
+
+      def set_current_agency
+        return unless current_user
+
+        agency = current_user&.user_agencies&.find_by(is_default: true)&.agency
+        if agency.present?
+          @current_agency = agency
+          Current.agency = agency # глобально
+        end
+      end
 
       # Аутентификация пользователя по access-токену
       def authenticate_user!

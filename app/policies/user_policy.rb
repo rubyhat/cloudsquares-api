@@ -19,7 +19,8 @@ class UserPolicy < ApplicationPolicy
 
   # Может ли пользователь создать нового пользователя?
   def create?
-    admin? || admin_manager? || agent_admin?
+    return true if admin? || admin_manager?
+    agent_admin? && %w[agent_manager agent].include?(record.role)
   end
 
   # Может ли пользователь обновить пользователя?
@@ -40,10 +41,15 @@ class UserPolicy < ApplicationPolicy
   class Scope < Scope
     def resolve
       return scope.all if admin? || admin_manager?
-      # return scope.where(agency_id: user.agency_id) if agent_admin?
 
-      scope.where(id: user.id) # только сам себя
+      if agent_admin? && Current.agency
+        user_ids = UserAgency.where(agency_id: Current.agency.id).pluck(:user_id)
+        return scope.where(id: user_ids)
+      end
+
+      scope.where(id: user.id)
     end
+
 
     private
 
@@ -93,13 +99,13 @@ class UserPolicy < ApplicationPolicy
 
   # Из одного агентства
   def same_agency?
-    true # temp
     # user.agency_id.present? && record.agency_id == user.agency_id
+
+    Current.agency && record.agencies.exists?(id: Current.agency.id)
   end
 
   # Либо сам, либо из того же агентства
   def same_agency_or_self?
-    true # temp
-    # same_agency? || self_user?
+    same_agency? || self_user?
   end
 end

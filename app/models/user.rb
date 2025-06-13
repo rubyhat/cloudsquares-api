@@ -8,6 +8,10 @@ class User < ApplicationRecord
   # Поддержка пароля через bcrypt
   has_secure_password
 
+  # Ассоциации
+  has_many :user_agencies, dependent: :restrict_with_error
+  has_many :agencies, through: :user_agencies
+
   # Текущие доступные регионы
   VALID_COUNTRY_CODES = %w[RU KZ BY].freeze
 
