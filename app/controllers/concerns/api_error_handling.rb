@@ -128,7 +128,7 @@ module ApiErrorHandling
     }
 
     action_text = query_map.fetch(query_name, "действию")
-    resource_text = record_map.fetch(record_name, "ресурсу")
+    resource_text = record_map.fetch(record_name, "ресурса")
 
     message = "Нет прав на #{action_text} #{resource_text}"
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_06_12_212253) do
+ActiveRecord::Schema[8.0].define(version: 2025_06_13_183804) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -25,9 +25,27 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_12_212253) do
     t.uuid "created_by_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.uuid "agency_plan_id"
+    t.index ["agency_plan_id"], name: "index_agencies_on_agency_plan_id"
     t.index ["created_by_id"], name: "index_agencies_on_created_by_id"
     t.index ["custom_domain"], name: "index_agencies_on_custom_domain", unique: true
     t.index ["slug"], name: "index_agencies_on_slug", unique: true
+  end
+
+  create_table "agency_plans", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "title", null: false
+    t.text "description"
+    t.integer "max_employees", default: 1, null: false
+    t.integer "max_properties", default: 10, null: false
+    t.integer "max_photos", default: 5, null: false
+    t.integer "max_buy_requests", default: 50, null: false
+    t.integer "max_sell_requests", default: 10, null: false
+    t.boolean "is_custom", default: false, null: false
+    t.boolean "is_active", default: true, null: false
+    t.datetime "deleted_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["title"], name: "index_agency_plans_on_title", unique: true
   end
 
   create_table "countries", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -77,6 +95,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_12_212253) do
     t.index ["phone"], name: "index_users_on_phone", unique: true
   end
 
+  add_foreign_key "agencies", "agency_plans"
   add_foreign_key "agencies", "users", column: "created_by_id"
   add_foreign_key "user_agencies", "agencies"
   add_foreign_key "user_agencies", "users"

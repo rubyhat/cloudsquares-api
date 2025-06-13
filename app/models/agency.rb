@@ -4,6 +4,7 @@
 class Agency < ApplicationRecord
   # Ассоциации
   belongs_to :created_by, class_name: "User", optional: true
+  belongs_to :agency_plan, optional: true
 
   has_many :user_agencies, dependent: :destroy
   has_many :users, through: :user_agencies, dependent: :restrict_with_error

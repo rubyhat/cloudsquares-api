@@ -1,50 +1,55 @@
-# This file should ensure the existence of records required to run the application in every environment (production,
-# development, test). The code here should be idempotent so that it can be executed at any point in every environment.
-# The data can then be loaded with the bin/rails db:seed command (or created alongside the database with db:setup).
-#
-# Example:
-#
-#   ["Action", "Comedy", "Drama", "Horror"].each do |genre_name|
-#     MovieGenre.find_or_create_by!(name: genre_name)
-#   end
-
 puts "🌍 Добавляем страны..."
 
-Country.create!(
-  [
-    {
-      title: "Казахстан",
-      code: "KZ",
-      phone_prefixes: ["+7"],
-      is_active: true,
-      locale: "ru",
-      timezone: "Asia/Almaty",
-      position: 1,
-      default_currency: "KZT"
-    },
-    {
-      title: "Россия",
-      code: "RU",
-      phone_prefixes: ["+7"],
-      is_active: true,
-      locale: "ru",
-      timezone: "Europe/Moscow",
-      position: 2,
-      default_currency: "RUB"
-    },
-    {
-      title: "Беларусь",
-      code: "BY",
-      phone_prefixes: ["+375"],
-      is_active: true,
-      locale: "ru",
-      timezone: "Europe/Minsk",
-      position: 3,
-      default_currency: "BYN"
-    }
-  ]
-)
+[
+  {
+    title: "Казахстан",
+    code: "KZ",
+    phone_prefixes: ["+7"],
+    is_active: true,
+    locale: "ru",
+    timezone: "Asia/Almaty",
+    position: 1,
+    default_currency: "KZT"
+  },
+  {
+    title: "Россия",
+    code: "RU",
+    phone_prefixes: ["+7"],
+    is_active: true,
+    locale: "ru",
+    timezone: "Europe/Moscow",
+    position: 2,
+    default_currency: "RUB"
+  },
+  {
+    title: "Беларусь",
+    code: "BY",
+    phone_prefixes: ["+375"],
+    is_active: true,
+    locale: "ru",
+    timezone: "Europe/Minsk",
+    position: 3,
+    default_currency: "BYN"
+  }
+].each do |attrs|
+  Country.find_or_initialize_by(code: attrs[:code]).tap do |country|
+    country.assign_attributes(attrs)
+    country.save!
+  end
+end
 
+puts "🌍 Создаём тарифные планы..."
+
+AgencyPlan.find_or_create_by!(title: "Базовый") do |plan|
+  plan.description = "Бесплатный тариф с базовыми возможностями"
+  plan.max_employees = 1
+  plan.max_properties = 5
+  plan.max_photos = 5
+  plan.max_buy_requests = 5
+  plan.max_sell_requests = 5
+  plan.is_custom = false
+  plan.is_active = true
+end
 
 puts "👑 Создаём пользователей по ролям..."
 
@@ -62,7 +67,7 @@ users = [
     email: "admin_manager@cloudsquares.local",
     password: "UserPassword1@",
     role: :admin_manager,
-    country_code: "KZ",
+    country_code: "RU",
     first_name: "John Doe 2"
   },
   {
@@ -100,13 +105,16 @@ users = [
 ]
 
 users.each do |attrs|
-  User.find_or_create_by!(phone: attrs[:phone]) do |user|
-    user.email = attrs[:email]
-    user.password = attrs[:password]
-    user.password_confirmation = attrs[:password]
-    user.role = attrs[:role]
-    user.country_code = attrs[:country_code]
-    user.is_active = true
-    user.first_name = attrs[:first_name]
+  User.find_or_initialize_by(phone: attrs[:phone]).tap do |user|
+    user.assign_attributes(
+      email: attrs[:email],
+      password: attrs[:password],
+      password_confirmation: attrs[:password],
+      role: attrs[:role],
+      country_code: attrs[:country_code],
+      is_active: true,
+      first_name: attrs[:first_name]
+    )
+    user.save!
   end
 end

@@ -21,6 +21,9 @@ Rails.application.routes.draw do
 
       # Агентства недвижимости
       resources :agencies, only: %i[index show create update destroy]
+
+      # Тарифные планы для агентств недвижимости
+      resources :agency_plans, only: %i[index show create update destroy]
     end
   end
 
