@@ -60,3 +60,5 @@ group :test do
   gem "database_cleaner-active_record"
   gem "shoulda-matchers"
 end
+
+gem "mobility", "~> 1.3"
