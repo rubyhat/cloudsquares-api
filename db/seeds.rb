@@ -49,6 +49,7 @@ AgencyPlan.find_or_create_by!(title: "Базовый") do |plan|
   plan.max_sell_requests = 5
   plan.is_custom = false
   plan.is_active = true
+  plan.is_default = true
 end
 
 puts "👑 Создаём пользователей по ролям..."

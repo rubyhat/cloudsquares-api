@@ -54,6 +54,18 @@ module Api
           )
         end
 
+        if @agency_plan.is_custom?
+          public_plans_count = AgencyPlan.where(is_custom: false, is_active: true).count
+          if public_plans_count <= 1
+            return render_error(
+              key: "agency_plans.last_public_plan",
+              message: "Нельзя удалить последний активный публичный тарифный план",
+              status: :unprocessable_entity,
+              code: 422
+            )
+          end
+        end
+
         if @agency_plan.soft_delete!
           render_success(
             key: "agency_plans.deleted",

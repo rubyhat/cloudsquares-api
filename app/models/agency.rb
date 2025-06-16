@@ -46,7 +46,7 @@ class Agency < ApplicationRecord
     build_agency_setting(
       site_title: "Недвижимость от #{title}",
       locale: "ru",
-      timezone: "Asia/Almaty"
+      timezone: "Europe/Moscow"
     ).save!
   end
 

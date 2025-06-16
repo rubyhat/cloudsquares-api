@@ -4,4 +4,5 @@ class AgencySerializer < ActiveModel::Serializer
              :is_active, :deleted_at, :created_at, :updated_at
 
   has_one :agency_setting, serializer: AgencySettingSerializer
+  belongs_to :agency_plan, serializer: AgencyPlanSerializer
 end

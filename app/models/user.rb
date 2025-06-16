@@ -40,6 +40,10 @@ class User < ApplicationRecord
   validates :password_digest, presence: true
   validate :validate_password_complexity, if: -> { password.present? } # Валидация сложности пароля
 
+  def default_agency
+    user_agencies.find_by(is_default: true)&.agency
+  end
+
   private
 
   def validate_password_complexity

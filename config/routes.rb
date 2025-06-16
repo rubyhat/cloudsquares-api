@@ -31,6 +31,9 @@ Rails.application.routes.draw do
       # Тарифные планы для агентств недвижимости
       resources :agency_plans, only: %i[index show create update destroy]
 
+      # Обновление тарифного плана у агентства недвижимости
+      patch "agencies/:id/change_plan", to: "agencies#change_plan"
+
       # Настройки Агентства
       get "my_agency/setting", to: "agency_settings#my_agency"
       resources :agency_settings, only: [:show, :update]

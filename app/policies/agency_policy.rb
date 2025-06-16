@@ -17,6 +17,10 @@ class AgencyPolicy < ApplicationPolicy
     user.admin? || user.admin_manager? || owner?
   end
 
+  def change_plan?
+    user.admin? || user.admin_manager? || (user.agent_admin? && record.id == user.default_agency&.id)
+  end
+
   private
 
   def owner?
