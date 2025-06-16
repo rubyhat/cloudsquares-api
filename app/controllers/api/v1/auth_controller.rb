@@ -3,7 +3,8 @@
 module Api
   module V1
     class AuthController < BaseController
-      skip_before_action :authenticate_user!, only: [ :login, :refresh ]
+      skip_before_action :authenticate_user!
+      before_action :authenticate_user!, only: [:logout]
 
       # POST /auth/login
       #
@@ -77,7 +78,48 @@ module Api
         render_success(key: "auth.logout", message: "Вы вышли из системы")
       end
 
+      # POST /auth/register-user
+      #
+      # Публичная регистрация B2C пользователя
+      def register_user
+        create_new_user(5)
+      end
+
+      # POST /auth/register-agent
+      #
+      # Регистрирует нового B2B пользователя (agent_admin).
+      # Не требует авторизации. Без привязки к агентству.
+      def register_agent_admin
+        create_new_user(2)
+      end
+
       private
+
+      def create_new_user(role)
+        user = User.new(register_user_params)
+        user.role = role
+
+        if user.save
+          tokens = JwtService.generate_tokens(user)
+          TokenStorageRedis.save(user_id: user.id, iat: tokens[:iat])
+
+          render json: {
+            user: UserSerializer.new(user, scope: user),
+            access_token: tokens[:access_token],
+            refresh_token: tokens[:refresh_token]
+          }, status: :created
+        else
+          render_validation_errors(user)
+        end
+      end
+
+      # Разрешённые параметры при регистрации пользователей
+      def register_user_params
+        params.require(:user).permit(
+          :phone, :email, :password, :password_confirmation,
+          :first_name, :last_name, :middle_name, :country_code
+        )
+      end
 
       def login_params
         params.permit(:phone, :password)

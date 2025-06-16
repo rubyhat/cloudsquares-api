@@ -3,7 +3,6 @@
 module Api
   module V1
     class UsersController < BaseController
-      skip_before_action :authenticate_user!, only: %i[create show], if: -> { params[:user][:role] == "user" rescue false }
       before_action :set_user, only: %i[show update destroy]
 
       # GET /api/v1/me
@@ -44,11 +43,6 @@ module Api
 
         if @user.role == "admin" || @user.role == "admin_manager"
           return render_forbidden(message: "Создание admin запрещено", key: "users.admin_not_allowed")
-        end
-
-        if @user.role == "user"
-          # Публичная регистрация без авторизации
-          return create_public_user
         end
 
         authorize @user
@@ -138,24 +132,6 @@ module Api
       def current_agency_for_user(user)
         user&.user_agencies&.find_by(is_default: true)&.agency
       end
-
-
-      # Создание публичного пользователя (без авторизации)
-      def create_public_user
-        if @user.save
-          tokens = JwtService.generate_tokens(@user)
-          TokenStorageRedis.save(user_id: @user.id, iat: tokens[:iat])
-
-          render json: {
-            user: UserSerializer.new(@user, scope: @user),
-            access_token: tokens[:access_token],
-            refresh_token: tokens[:refresh_token]
-          }, status: :created
-        else
-          render_validation_errors(@user)
-        end
-      end
-
 
       # Установка пользователя по ID
       def set_user

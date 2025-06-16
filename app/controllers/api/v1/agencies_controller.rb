@@ -39,7 +39,7 @@ module Api
         render json: @agency, serializer: AgencySerializer, status: :created
 
       rescue ActiveRecord::RecordInvalid => e
-        render_validation_errors(@agency)
+        render_validation_errors(e.record)
       end
 
 

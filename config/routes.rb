@@ -13,6 +13,12 @@ Rails.application.routes.draw do
       post "auth/refresh", to: "auth#refresh"
       post "auth/logout",  to: "auth#logout"
 
+      # Создание нового пользователя B2B в роли agent_admin
+      post "auth/register-agent", to: "auth#register_agent_admin"
+
+      # Создание нового пользователя B2C в роли user
+      post "auth/register-user", to: "auth#register_user"
+
       # Текущий пользователь
       get :me, to: "users#me"
 
@@ -24,6 +30,11 @@ Rails.application.routes.draw do
 
       # Тарифные планы для агентств недвижимости
       resources :agency_plans, only: %i[index show create update destroy]
+
+      # Настройки Агентства
+      get "my_agency/setting", to: "agency_settings#my_agency"
+      resources :agency_settings, only: [:show, :update]
+
     end
   end
 

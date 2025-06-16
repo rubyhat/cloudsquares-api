@@ -3,6 +3,10 @@
 # TODO: добавить автоматическую генерацию slug
 class Agency < ApplicationRecord
   # Ассоциации
+  has_one :agency_setting, dependent: :destroy
+
+  after_create :create_agency_setting!
+
   belongs_to :created_by, class_name: "User", optional: true
   belongs_to :agency_plan, optional: true
 
@@ -35,5 +39,16 @@ class Agency < ApplicationRecord
   def soft_delete!
     update(is_active: false, deleted_at: Time.current)
   end
+
+  private
+
+  def create_agency_setting!
+    build_agency_setting(
+      site_title: "Недвижимость от #{title}",
+      locale: "ru",
+      timezone: "Asia/Almaty"
+    ).save!
+  end
+
 
 end

@@ -31,5 +31,10 @@ module CloudsquaresApi
     # Skip views, helpers and assets when generating a new resource.
 
     config.api_only = true
+
+    # Translations
+    config.i18n.default_locale = :ru
+    config.i18n.available_locales = %i[ru en kz]
+    config.i18n.fallbacks = true
   end
 end

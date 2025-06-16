@@ -100,6 +100,7 @@
     <orderEntry type="library" scope="PROVIDED" name="mini_magick (v5.2.0, asdf: 3.4.2) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="mini_mime (v1.1.5, asdf: 3.4.2) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="minitest (v5.25.5, asdf: 3.4.2) [gem]" level="application" />
+    <orderEntry type="library" scope="PROVIDED" name="mobility (v1.3.2, asdf: 3.4.2) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="msgpack (v1.8.0, asdf: 3.4.2) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="net-imap (v0.5.8, asdf: 3.4.2) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="net-pop (v0.1.2, asdf: 3.4.2) [gem]" level="application" />
@@ -141,6 +142,7 @@
     <orderEntry type="library" scope="PROVIDED" name="redis-client (v0.24.0, asdf: 3.4.2) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="regexp_parser (v2.10.0, asdf: 3.4.2) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="reline (v0.6.1, asdf: 3.4.2) [gem]" level="application" />
+    <orderEntry type="library" scope="PROVIDED" name="request_store (v1.7.0, asdf: 3.4.2) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="rspec-core (v3.13.4, asdf: 3.4.2) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="rspec-expectations (v3.13.5, asdf: 3.4.2) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="rspec-mocks (v3.13.5, asdf: 3.4.2) [gem]" level="application" />
@@ -203,6 +205,8 @@
         <option value="mailbox" />
         <option value="mailer" />
         <option value="migration" />
+        <option value="mobility:install" />
+        <option value="mobility:translations" />
         <option value="model" />
         <option value="pundit:install" />
         <option value="pundit:policy" />
@@ -276,6 +280,8 @@
         <option value="mailbox" />
         <option value="mailer" />
         <option value="migration" />
+        <option value="mobility:install" />
+        <option value="mobility:translations" />
         <option value="model" />
         <option value="pundit:install" />
         <option value="pundit:policy" />
@@ -616,6 +622,16 @@
             </subtasks>
           </RakeTaskImpl>
           <RakeTaskImpl description="Run all specs in spec directory (excluding plugin specs)" fullCommand="spec" id="spec" />
+          <RakeTaskImpl id="spec">
+            <subtasks>
+              <RakeTaskImpl description="Run the code examples in spec/models" fullCommand="spec:models" id="models" />
+              <RakeTaskImpl description="Run the code examples in spec/policies" fullCommand="spec:policies" id="policies" />
+              <RakeTaskImpl description="Run the code examples in spec/requests" fullCommand="spec:requests" id="requests" />
+              <RakeTaskImpl description="Run the code examples in spec/services" fullCommand="spec:services" id="services" />
+              <RakeTaskImpl description="" fullCommand="spec:prepare" id="prepare" />
+              <RakeTaskImpl description="" fullCommand="spec:statsetup" id="statsetup" />
+            </subtasks>
+          </RakeTaskImpl>
           <RakeTaskImpl description="Report code statistics (KLOCs, etc) from the application or engine" fullCommand="stats" id="stats" />
           <RakeTaskImpl description="Run all tests in test folder except system ones" fullCommand="test" id="test" />
           <RakeTaskImpl id="test">
@@ -704,12 +720,6 @@
             </subtasks>
           </RakeTaskImpl>
           <RakeTaskImpl description="" fullCommand="rswag" id="rswag" />
-          <RakeTaskImpl id="spec">
-            <subtasks>
-              <RakeTaskImpl description="" fullCommand="spec:prepare" id="prepare" />
-              <RakeTaskImpl description="" fullCommand="spec:statsetup" id="statsetup" />
-            </subtasks>
-          </RakeTaskImpl>
           <RakeTaskImpl description="" fullCommand="tmp" id="tmp" />
           <RakeTaskImpl description="" fullCommand="tmp/cache" id="tmp/cache" />
           <RakeTaskImpl description="" fullCommand="tmp/pids" id="tmp/pids" />

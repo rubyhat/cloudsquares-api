@@ -8,9 +8,14 @@ module Api
 
       rescue_from Pundit::NotAuthorizedError, with: :render_pundit_forbidden
 
+      before_action :set_locale
       before_action :authenticate_user!, unless: -> { public_access_allowed? }
       before_action { Current.user = current_user }
       before_action :set_current_agency
+
+      def set_locale
+        I18n.locale = request.headers["X-Locale"] || I18n.default_locale
+      end
 
       def public_access_allowed?
         # Переопределяется в контроллерах
@@ -28,6 +33,11 @@ module Api
           Current.agency = agency # глобально
         end
       end
+
+      def current_agency
+        @current_agency
+      end
+
 
       # Аутентификация пользователя по access-токену
       def authenticate_user!
