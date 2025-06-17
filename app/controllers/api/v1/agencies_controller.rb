@@ -135,6 +135,11 @@ module Api
 
       def set_agency
         @agency = Agency.find(params[:id])
+      rescue ActiveRecord::RecordNotFound
+        render_not_found(
+          key: "agency.not_found",
+          message: "Агентство недвижимости не найдено"
+        ) unless @agency
       end
 
       def agency_params

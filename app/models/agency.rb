@@ -4,6 +4,7 @@
 class Agency < ApplicationRecord
   # Ассоциации
   has_one :agency_setting, dependent: :destroy
+  has_many :property_categories, dependent: :destroy
 
   after_create :create_agency_setting!
 

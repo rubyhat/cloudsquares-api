@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_06_16_133833) do
+ActiveRecord::Schema[8.0].define(version: 2025_06_17_082544) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -107,6 +107,21 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_16_133833) do
     t.index ["translatable_id", "translatable_type", "locale", "key"], name: "index_mobility_text_translations_on_keys", unique: true
   end
 
+  create_table "property_categories", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "agency_id", null: false
+    t.string "title", null: false
+    t.string "slug", null: false
+    t.integer "position"
+    t.boolean "is_active", default: true, null: false
+    t.uuid "parent_id"
+    t.integer "level", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agency_id", "slug"], name: "index_property_categories_on_agency_id_and_slug", unique: true
+    t.index ["agency_id"], name: "index_property_categories_on_agency_id"
+    t.index ["parent_id"], name: "index_property_categories_on_parent_id"
+  end
+
   create_table "user_agencies", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "user_id", null: false
     t.uuid "agency_id", null: false
@@ -142,6 +157,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_16_133833) do
   add_foreign_key "agencies", "agency_plans"
   add_foreign_key "agencies", "users", column: "created_by_id"
   add_foreign_key "agency_settings", "agencies"
+  add_foreign_key "property_categories", "agencies"
+  add_foreign_key "property_categories", "property_categories", column: "parent_id"
   add_foreign_key "user_agencies", "agencies"
   add_foreign_key "user_agencies", "users"
 end

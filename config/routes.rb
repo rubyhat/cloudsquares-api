@@ -38,6 +38,9 @@ Rails.application.routes.draw do
       get "my_agency/setting", to: "agency_settings#my_agency"
       resources :agency_settings, only: [:show, :update]
 
+      # Категории объектов недвижимости
+      resources :property_categories, only: %i[index show create update destroy]
+
     end
   end
 

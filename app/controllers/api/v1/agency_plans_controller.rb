@@ -82,6 +82,7 @@ module Api
 
       def set_agency_plan
         @agency_plan = AgencyPlan.find_by(id: params[:id])
+      rescue ActiveRecord::RecordNotFound
         render_not_found(
           key: "agency_plans.not_found",
           message: "Тарифный план не найден"

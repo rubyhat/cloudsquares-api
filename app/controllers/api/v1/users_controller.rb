@@ -136,7 +136,11 @@ module Api
       # Установка пользователя по ID
       def set_user
         @user = User.find(params[:id])
-        render_not_found unless @user
+      rescue ActiveRecord::RecordNotFound
+        render_not_found(
+          key: "user.not_found",
+          message: "GПользователь не найден"
+        ) unless @user
       end
 
       # Список разрешённых параметров

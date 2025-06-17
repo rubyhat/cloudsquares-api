@@ -119,3 +119,16 @@ users.each do |attrs|
     user.save!
   end
 end
+
+puts "👑 Создаём Категории внутри агентства..."
+agency = Agency.first
+
+%w[Квартира Дом Коммерческая\ недвижимость Земельный\ участок].each_with_index do |title, i|
+  PropertyCategory.create!(
+    agency: agency,
+    title: title,
+    slug: title.parameterize,
+    position: i + 1
+  )
+end
+

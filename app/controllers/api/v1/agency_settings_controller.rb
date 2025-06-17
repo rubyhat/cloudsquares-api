@@ -38,8 +38,12 @@ module Api
 
       def set_agency_setting
         @agency_setting = AgencySetting.find(params[:id])
-      rescue ActiveRecord::RecordNotFound
-        render_not_found
+        rescue ActiveRecord::RecordNotFound
+        render_not_found(
+          key: "agency_setting.not_found",
+          message: "Настройки агентства не найдены"
+        ) unless @agency_setting
+
       end
 
       def agency_setting_params
