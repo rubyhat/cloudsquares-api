@@ -3,7 +3,8 @@ class PropertyCategory < ApplicationRecord
   belongs_to :agency
   belongs_to :parent, class_name: "PropertyCategory", optional: true
   has_many :children, class_name: "PropertyCategory", foreign_key: :parent_id, dependent: :destroy
-  # has_many :property_category_characteristics, dependent: :destroy
+  has_many :property_category_characteristics, dependent: :destroy
+  has_many :property_characteristics, through: :property_category_characteristics
   # has_many :properties, dependent: :restrict_with_error
 
   validates :title, presence: true

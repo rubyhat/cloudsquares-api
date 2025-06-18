@@ -41,6 +41,9 @@ Rails.application.routes.draw do
       # Категории объектов недвижимости
       resources :property_categories, only: %i[index show create update destroy]
 
+      # Характеристики недвижимости
+      resources :property_characteristics
+
     end
   end
 

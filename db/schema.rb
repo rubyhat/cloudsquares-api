@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_06_17_082544) do
+ActiveRecord::Schema[8.0].define(version: 2025_06_17_135507) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -122,6 +122,30 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_17_082544) do
     t.index ["parent_id"], name: "index_property_categories_on_parent_id"
   end
 
+  create_table "property_category_characteristics", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "property_category_id", null: false
+    t.uuid "property_characteristic_id", null: false
+    t.integer "position"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["property_category_id", "property_characteristic_id"], name: "index_category_characteristics_uniqueness", unique: true
+    t.index ["property_category_id"], name: "idx_on_property_category_id_27d01bf010"
+    t.index ["property_characteristic_id"], name: "idx_on_property_characteristic_id_cdaa3e88f5"
+  end
+
+  create_table "property_characteristics", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "agency_id", null: false
+    t.string "title", null: false
+    t.string "unit"
+    t.string "field_type", null: false
+    t.boolean "is_active", default: true, null: false
+    t.integer "position"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agency_id", "title"], name: "index_property_characteristics_on_agency_id_and_title", unique: true
+    t.index ["agency_id"], name: "index_property_characteristics_on_agency_id"
+  end
+
   create_table "user_agencies", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "user_id", null: false
     t.uuid "agency_id", null: false
@@ -159,6 +183,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_17_082544) do
   add_foreign_key "agency_settings", "agencies"
   add_foreign_key "property_categories", "agencies"
   add_foreign_key "property_categories", "property_categories", column: "parent_id"
+  add_foreign_key "property_category_characteristics", "property_categories"
+  add_foreign_key "property_category_characteristics", "property_characteristics"
+  add_foreign_key "property_characteristics", "agencies"
   add_foreign_key "user_agencies", "agencies"
   add_foreign_key "user_agencies", "users"
 end
