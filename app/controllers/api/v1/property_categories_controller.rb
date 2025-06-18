@@ -57,6 +57,15 @@ module Api
         end
       end
 
+      # Получить все характеристики недвижмости привязанной к этой категории
+      def characteristics
+        category = PropertyCategory.find(params[:id])
+        authorize category, :characteristics?
+
+        characteristics = category.property_characteristics.active.order(:position)
+        render json: characteristics, each_serializer: PropertyCharacteristicSerializer
+      end
+
       private
 
       def set_agency

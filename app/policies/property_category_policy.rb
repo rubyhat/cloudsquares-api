@@ -22,6 +22,10 @@ class PropertyCategoryPolicy < ApplicationPolicy
     manage_categories? && user.agent_admin? || user.admin? || user.admin_manager?
   end
 
+  def characteristics?
+    manage_categories?
+  end
+
   private
 
   def user_in_agency_context?

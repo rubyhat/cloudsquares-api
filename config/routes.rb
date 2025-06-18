@@ -40,10 +40,18 @@ Rails.application.routes.draw do
 
       # Категории объектов недвижимости
       resources :property_categories, only: %i[index show create update destroy]
+      resources :property_categories do
+        get :characteristics, on: :member # GET /property_categories/:id/characteristics
+      end
 
       # Характеристики недвижимости
       resources :property_characteristics
+      resources :property_characteristics do
+        get :categories, on: :member # GET /api/v1/property_characteristics/:id/categories
+      end
 
+      # Методы привязки характеристики недвижимости к категории недвижимости
+      resources :property_category_characteristics, only: %i[create destroy]
     end
   end
 

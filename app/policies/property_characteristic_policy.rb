@@ -22,6 +22,10 @@ class PropertyCharacteristicPolicy < ApplicationPolicy
     manage?
   end
 
+  def categories?
+    manage?
+  end
+
   private
 
   def manage?

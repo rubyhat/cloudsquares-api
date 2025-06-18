@@ -52,6 +52,16 @@ module Api
         end
       end
 
+      # Получить все категории, связанные с данной характеристикой
+      def categories
+        characteristic = Current.agency.property_characteristics.find(params[:id])
+        authorize characteristic, :categories?
+
+        categories = characteristic.property_categories.active.order(:position)
+        render json: categories, each_serializer: PropertyCategorySerializer
+      end
+
+
       private
 
       def set_characteristic
