@@ -69,7 +69,7 @@ module Api
       end
 
       def characteristic_params
-        params.require(:property_characteristic).permit(:title, :unit, :field_type, :position, :is_active)
+        params.require(:property_characteristic).permit(:title, :unit, :field_type, :position, :is_active, :is_private)
       end
     end
   end

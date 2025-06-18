@@ -8,6 +8,7 @@ class Agency < ApplicationRecord
   has_many :property_characteristics, dependent: :destroy
 
   after_create :create_agency_setting!
+  after_create :seed_default_data!
 
   belongs_to :created_by, class_name: "User", optional: true
   belongs_to :agency_plan, optional: true
@@ -44,6 +45,7 @@ class Agency < ApplicationRecord
 
   private
 
+  # Создаем настройки агентства для публичной платформы сразу после создания агентства
   def create_agency_setting!
     build_agency_setting(
       site_title: "Недвижимость от #{title}",
@@ -52,5 +54,8 @@ class Agency < ApplicationRecord
     ).save!
   end
 
-
+  # Создаем базовые категории и характеристики сразу после создания агентства
+  def seed_default_data!
+    AgencyTemplateSeeder.new(self).call
+  end
 end

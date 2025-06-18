@@ -13,6 +13,7 @@ class AgencyTemplateSeeder
 
   private
 
+  # Создаем категории недвижимости
   def seed_categories
     @categories ||= {
       flats: @agency.property_categories.create!(title: "Квартиры", slug: "flats", position: 1),
@@ -20,6 +21,7 @@ class AgencyTemplateSeeder
     }
   end
 
+  # Создаем общий пул базовых характеристик недвижимости
   def seed_characteristics
     @characteristics ||= {
       area: create_characteristic("Площадь", "м²", "number", 1),
@@ -30,6 +32,7 @@ class AgencyTemplateSeeder
     }
   end
 
+  # Привязываем характеристики к категориям недвижимости
   def seed_category_characteristics
     flats = @categories[:flats]
     houses = @categories[:houses]
@@ -38,6 +41,7 @@ class AgencyTemplateSeeder
     houses.property_characteristics << @characteristics.values_at(:area, :bathroom, :parking)
   end
 
+  # Метод для создания характеристики
   def create_characteristic(title, unit, field_type, position)
     @agency.property_characteristics.create!(
       title: title,

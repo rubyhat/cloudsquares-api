@@ -11,4 +11,5 @@ class PropertyCharacteristic < ApplicationRecord
   validates :field_type, presence: true, inclusion: { in: %w[string number boolean select] }
 
   scope :active, -> { where(is_active: true) }
+  scope :publicly_visible, -> { where(is_private: false) }
 end

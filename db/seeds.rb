@@ -40,7 +40,7 @@ end
 
 puts "🌍 Создаём тарифные планы..."
 
-AgencyPlan.find_or_create_by!(title: "Базовый") do |plan|
+AgencyPlan.find_or_create_by!(title: "Пробный") do |plan|
   plan.description = "Бесплатный тариф с базовыми возможностями"
   plan.max_employees = 1
   plan.max_properties = 5
@@ -120,15 +120,15 @@ users.each do |attrs|
   end
 end
 
-puts "👑 Создаём Категории внутри агентства..."
-agency = Agency.first
-
-%w[Квартира Дом Коммерческая\ недвижимость Земельный\ участок].each_with_index do |title, i|
-  PropertyCategory.create!(
-    agency: agency,
-    title: title,
-    slug: title.parameterize,
-    position: i + 1
-  )
-end
+# puts "👑 Создаём Категории внутри агентства..."
+# agency = Agency.first
+#
+# %w[Квартира Дом Коммерческая\ недвижимость Земельный\ участок].each_with_index do |title, i|
+#   PropertyCategory.create!(
+#     agency: agency,
+#     title: title,
+#     slug: title.parameterize,
+#     position: i + 1
+#   )
+# end
 

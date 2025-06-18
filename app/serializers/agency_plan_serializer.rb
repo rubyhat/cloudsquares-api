@@ -5,5 +5,5 @@ class AgencyPlanSerializer < ActiveModel::Serializer
              :max_employees, :max_properties,
              :max_photos, :max_buy_requests,
              :max_sell_requests,
-             :is_custom, :is_active, :created_at, :updated_at
+             :is_custom, :is_active, :is_default, :created_at, :updated_at
 end
