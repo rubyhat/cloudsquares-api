@@ -7,6 +7,8 @@ class CreateProperties < ActiveRecord::Migration[8.0]
       t.decimal :discount, default: 0
       t.integer :listing_type, null: false
       t.integer :status, null: false, default: 0
+      t.boolean :is_active, null: false, default: true
+      t.datetime :deleted_at
 
       t.uuid :category_id, null: false
       t.uuid :agent_id, null: false
@@ -18,5 +20,6 @@ class CreateProperties < ActiveRecord::Migration[8.0]
     add_index :properties, :agency_id
     add_index :properties, :category_id
     add_index :properties, :agent_id
+    add_index :properties, :is_active
   end
 end

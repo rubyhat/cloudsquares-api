@@ -13,6 +13,12 @@ class Property < ApplicationRecord
 
   after_create :create_default_associations
 
+  scope :active, -> { where(is_active: true) }
+
+  def soft_delete!
+    update(is_active: false, deleted_at: Time.current)
+  end
+
   private
 
   def create_default_associations

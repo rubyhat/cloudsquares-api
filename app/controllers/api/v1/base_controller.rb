@@ -30,7 +30,14 @@ module Api
         agency = current_user&.user_agencies&.find_by(is_default: true)&.agency
         if agency.present?
           @current_agency = agency
-          Current.agency = agency # глобально
+          Current.agency = agency
+        else
+          render_error(
+            key: "auth.no_agency",
+            message: "Пользователь не привязан ни к одному агентству",
+            status: :forbidden,
+            code: 403
+          )
         end
       end
 
@@ -54,7 +61,12 @@ module Api
                             if payload.present? && payload["type"] == "access"
                               User.find_by(id: payload["sub"])
                             else
-                              nil
+                              render_error(
+                                key: "user.not_found",
+                                message: "Пользователь не найден",
+                                status: :forbidden,
+                                code: 403
+                              )
                             end
                           end
       end
