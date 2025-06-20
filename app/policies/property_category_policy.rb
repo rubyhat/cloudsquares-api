@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-# Политика доступа для PropertyCategory
 class PropertyCategoryPolicy < ApplicationPolicy
   def index?
     true
@@ -11,29 +10,28 @@ class PropertyCategoryPolicy < ApplicationPolicy
   end
 
   def create?
-    manage_categories?
+    manage_own_agency?
   end
 
   def update?
-    manage_categories?
+    manage_own_agency?
   end
 
   def destroy?
-    manage_categories? && user.agent_admin? || user.admin? || user.admin_manager?
+    (admin? || admin_manager?) || (agent_admin? && same_agency?)
   end
 
   def characteristics?
-    manage_categories?
+    manage_own_agency?
   end
 
-  private
-
-  def user_in_agency_context?
-    user.present? && record.agency_id == Current.agency&.id
-  end
-
-  def manage_categories?
-    return true if user.admin? || user.admin_manager?
-    user_in_agency_context? && (user.agent_admin? || user.agent_manager?)
+  class Scope < Scope
+    def resolve
+      if admin? || admin_manager?
+        scope.all
+      else
+        scope.where(agency_id: Current.agency&.id)
+      end
+    end
   end
 end

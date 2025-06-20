@@ -16,20 +16,16 @@ class PropertyPolicy < ApplicationPolicy
   end
 
   def destroy?
-    user.admin? || user.admin_manager? || (user.agent_admin? && own_agency?)
+    admin? || admin_manager? || (agent_admin? && same_agency?)
   end
 
-  private
-
-  def manage?
-    user.admin? || user.admin_manager? || user.agent_admin? || user.agent_manager? || user.agent?
-  end
-
-  def own_agency?
-    record.agency_id == Current.agency&.id
-  end
-
-  def manage_own_agency?
-    manage? && own_agency?
+  class Scope < Scope
+    def resolve
+      if admin? || admin_manager?
+        scope.all
+      else
+        scope.where(agency_id: Current.agency&.id)
+      end
+    end
   end
 end

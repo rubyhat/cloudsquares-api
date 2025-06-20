@@ -1,4 +1,3 @@
-# app/policies/property_characteristic_policy.rb
 # frozen_string_literal: true
 
 class PropertyCharacteristicPolicy < ApplicationPolicy
@@ -11,24 +10,18 @@ class PropertyCharacteristicPolicy < ApplicationPolicy
   end
 
   def create?
-    manage?
+    manage_agency?
   end
 
   def update?
-    manage?
+    manage_agency?
   end
 
   def destroy?
-    manage?
+    manage_agency?
   end
 
   def categories?
-    manage?
-  end
-
-  private
-
-  def manage?
-    user.admin? || user.admin_manager? || user.agent_admin?
+    manage_agency?
   end
 end

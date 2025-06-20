@@ -2,9 +2,13 @@
 # frozen_string_literal: true
 
 # Политика доступа для модели User.
-# - admin, admin_manager: полный доступ ко всем пользователям
-# - agent_admin: доступ только к пользователям своего агентства
-# - agent_manager, agent, user: доступ только к самому себе
+#
+# - admin, admin_manager: имеют полный доступ ко всем пользователям
+# - agent_admin: имеет доступ только к пользователям своего агентства
+# - agent_manager, agent, user: имеют доступ только к себе (self)
+#
+# Привязка пользователей к агентству реализована через модель `UserAgency`.
+# Контекст текущего агентства определяется через `Current.agency`.
 
 class UserPolicy < ApplicationPolicy
   # Может ли пользователь просматривать список пользователей?
@@ -33,79 +37,26 @@ class UserPolicy < ApplicationPolicy
     admin? || admin_manager? || (agent_admin? && same_agency?)
   end
 
+  # Может ли пользователь получить информацию о себе через /me
   def me?
     admin? || admin_manager? || same_agency_or_self?
   end
 
-  # Глобальный скоуп для User
+  # Скоуп для выборки доступных пользователей
   class Scope < Scope
+    # Возвращает:
+    # - все записи, если пользователь — админ или менеджер
+    # - пользователей своего агентства, если agent_admin
+    # - самого себя во всех остальных случаях
     def resolve
       return scope.all if admin? || admin_manager?
 
       if agent_admin? && Current.agency
         user_ids = UserAgency.where(agency_id: Current.agency.id).pluck(:user_id)
-        return scope.where(id: user_ids)
+        scope.where(id: user_ids)
+      else
+        scope.where(id: user.id)
       end
-
-      scope.where(id: user.id)
     end
-
-
-    private
-
-    def admin?
-      user.role == "admin"
-    end
-
-    def admin_manager?
-      user.role == "admin_manager"
-    end
-
-    def agent_admin?
-      user.role == "agent_admin"
-    end
-  end
-
-  private
-
-  def admin?
-    user.role == "admin"
-  end
-
-  def admin_manager?
-    user.role == "admin_manager"
-  end
-
-  def agent_admin?
-    user.role == "agent_admin"
-  end
-
-  def agent_manager?
-    user.role == "agent_manager"
-  end
-
-  def agent?
-    user.role == "agent"
-  end
-
-  def user?
-    user.role == "user"
-  end
-
-  # Является ли пользователь объектом политики сам собой
-  def self_user?
-    user.id == record.id
-  end
-
-  # Из одного агентства
-  def same_agency?
-    # user.agency_id.present? && record.agency_id == user.agency_id
-
-    Current.agency && record.agencies.exists?(id: Current.agency.id)
-  end
-
-  # Либо сам, либо из того же агентства
-  def same_agency_or_self?
-    same_agency? || self_user?
   end
 end
