@@ -40,7 +40,7 @@ class Agency < ApplicationRecord
 
   # Мягкое удаление
   def soft_delete!
-    update(is_active: false, deleted_at: Time.current)
+    update(is_active: false, deleted_at: Time.zone.now)
   end
 
   private

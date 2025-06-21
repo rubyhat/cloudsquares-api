@@ -116,7 +116,7 @@ module Api
 
         authorize @user
 
-        if @user.update(is_active: false, deleted_at: Time.current)
+        if @user.update(is_active: false, deleted_at: Time.zone.now)
           render_success(
             key: "users.deleted",
             message: "Пользователь успешно удалён (деактивирован)",

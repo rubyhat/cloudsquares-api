@@ -44,8 +44,13 @@ Rails.application.routes.draw do
       # Привязка характеристик к категориям
       resources :property_category_characteristics, only: %i[create destroy]
 
-      # 🏠 Объекты недвижимости
+      # Объекты недвижимости
       resources :properties
+
+      # Комментарии к объектам недвижимости
+      resources :properties, only: [] do
+        resources :comments, controller: "property_comments", only: %i[index create update destroy]
+      end
     end
   end
 end

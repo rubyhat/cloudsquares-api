@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_06_21_151337) do
+ActiveRecord::Schema[8.0].define(version: 2025_06_21_172806) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -188,6 +188,22 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_21_151337) do
     t.index ["agency_id"], name: "index_property_characteristics_on_agency_id"
   end
 
+  create_table "property_comments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "property_id", null: false
+    t.uuid "user_id", null: false
+    t.text "body", null: false
+    t.boolean "edited", default: false, null: false
+    t.datetime "edited_at"
+    t.integer "edit_count", default: 0, null: false
+    t.boolean "is_deleted", default: false, null: false
+    t.datetime "deleted_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["property_id", "is_deleted"], name: "index_property_comments_on_property_id_and_is_deleted"
+    t.index ["property_id"], name: "index_property_comments_on_property_id"
+    t.index ["user_id"], name: "index_property_comments_on_user_id"
+  end
+
   create_table "property_locations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "property_id", null: false
     t.string "country", null: false
@@ -249,6 +265,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_21_151337) do
   add_foreign_key "property_characteristic_values", "properties"
   add_foreign_key "property_characteristic_values", "property_characteristics"
   add_foreign_key "property_characteristics", "agencies"
+  add_foreign_key "property_comments", "properties"
+  add_foreign_key "property_comments", "users"
   add_foreign_key "property_locations", "properties"
   add_foreign_key "user_agencies", "agencies"
   add_foreign_key "user_agencies", "users"

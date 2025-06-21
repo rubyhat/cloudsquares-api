@@ -9,6 +9,8 @@ class Property < ApplicationRecord
   has_many :property_characteristic_values, dependent: :destroy
   accepts_nested_attributes_for :property_characteristic_values, allow_destroy: true
 
+  has_many :property_comments, dependent: :destroy
+
   enum :listing_type, { sale: 0, rent: 1 }, default: :sale
   enum :status, { pending: 0, active: 1, sold: 2, rented: 3, cancelled: 4 }, default: :pending
 
@@ -20,7 +22,7 @@ class Property < ApplicationRecord
   scope :active, -> { where(is_active: true) }
 
   def soft_delete!
-    update(is_active: false, deleted_at: Time.current)
+    update(is_active: false, deleted_at: Time.zone.now)
   end
 
   private

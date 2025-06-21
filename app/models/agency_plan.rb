@@ -8,7 +8,7 @@ class AgencyPlan < ApplicationRecord
   validate :only_one_default_plan, if: -> { is_default? && is_active? }
 
   def soft_delete!
-    update(is_active: false, deleted_at: Time.current)
+    update(is_active: false, deleted_at: Time.zone.now)
   end
 
   scope :active, -> { where(is_active: true) }

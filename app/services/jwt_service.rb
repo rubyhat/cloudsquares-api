@@ -18,7 +18,7 @@ class JwtService
     # @param user [User]
     # @return [Hash] access_token, refresh_token
     def generate_tokens(user)
-      now = Time.current
+      now = Time.zone.now
       iat = now.to_i
 
       access_payload = {
