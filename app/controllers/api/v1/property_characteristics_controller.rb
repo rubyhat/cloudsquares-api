@@ -7,17 +7,20 @@ module Api
       before_action :set_characteristic, only: %i[show update destroy]
       after_action :verify_authorized
 
+      # GET /api/v1/property_characteristics
       def index
         characteristics = Current.agency.property_characteristics.active.order(:position)
         authorize characteristics
         render json: characteristics, each_serializer: PropertyCharacteristicSerializer
       end
 
+      # GET /api/v1/property_characteristics/:id
       def show
         authorize @characteristic
         render json: @characteristic, serializer: PropertyCharacteristicSerializer
       end
 
+      # POST /api/v1/property_characteristics
       def create
         characteristic = Current.agency.property_characteristics.new(characteristic_params)
         authorize characteristic
@@ -29,6 +32,7 @@ module Api
         end
       end
 
+      # PATCH/PUT /api/v1/property_characteristics/:id
       def update
         authorize @characteristic
 
@@ -39,6 +43,7 @@ module Api
         end
       end
 
+      # DELETE /api/v1/property_characteristics/:id
       def destroy
         authorize @characteristic
         if @characteristic.destroy
@@ -52,7 +57,7 @@ module Api
         end
       end
 
-      # Получить все категории, связанные с данной характеристикой
+      # GET /api/v1/property_characteristics/:id/categories
       def categories
         characteristic = Current.agency.property_characteristics.find(params[:id])
         authorize characteristic, :categories?
@@ -61,15 +66,18 @@ module Api
         render json: categories, each_serializer: PropertyCategorySerializer
       end
 
-
       private
 
       def set_characteristic
         @characteristic = Current.agency.property_characteristics.find(params[:id])
       end
 
+      # Поддержка вложенных параметров options_attributes
       def characteristic_params
-        params.require(:property_characteristic).permit(:title, :unit, :field_type, :position, :is_active, :is_private)
+        params.require(:property_characteristic).permit(
+          :title, :unit, :field_type, :position, :is_active, :is_private,
+          options_attributes: %i[id value _destroy position]
+        )
       end
     end
   end

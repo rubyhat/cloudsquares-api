@@ -61,7 +61,6 @@ module Api
       def characteristics
         category = PropertyCategory.find(params[:id])
         authorize category, :characteristics?
-
         characteristics = category.property_characteristics.active.order(:position)
         render json: characteristics, each_serializer: PropertyCharacteristicSerializer
       end

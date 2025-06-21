@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_06_18_181712) do
+ActiveRecord::Schema[8.0].define(version: 2025_06_21_151337) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -153,6 +153,27 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_18_181712) do
     t.index ["property_characteristic_id"], name: "idx_on_property_characteristic_id_cdaa3e88f5"
   end
 
+  create_table "property_characteristic_options", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "property_characteristic_id", null: false
+    t.string "value", null: false
+    t.integer "position"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["property_characteristic_id", "value"], name: "index_characteristic_options_uniqueness", unique: true
+    t.index ["property_characteristic_id"], name: "idx_on_property_characteristic_id_c6d3169322"
+  end
+
+  create_table "property_characteristic_values", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "property_id", null: false
+    t.uuid "property_characteristic_id", null: false
+    t.string "value", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["property_characteristic_id"], name: "idx_on_property_characteristic_id_1ac02bdeb2"
+    t.index ["property_id", "property_characteristic_id"], name: "index_characteristic_values_uniqueness", unique: true
+    t.index ["property_id"], name: "index_property_characteristic_values_on_property_id"
+  end
+
   create_table "property_characteristics", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "agency_id", null: false
     t.string "title", null: false
@@ -224,6 +245,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_18_181712) do
   add_foreign_key "property_categories", "property_categories", column: "parent_id"
   add_foreign_key "property_category_characteristics", "property_categories"
   add_foreign_key "property_category_characteristics", "property_characteristics"
+  add_foreign_key "property_characteristic_options", "property_characteristics"
+  add_foreign_key "property_characteristic_values", "properties"
+  add_foreign_key "property_characteristic_values", "property_characteristics"
   add_foreign_key "property_characteristics", "agencies"
   add_foreign_key "property_locations", "properties"
   add_foreign_key "user_agencies", "agencies"

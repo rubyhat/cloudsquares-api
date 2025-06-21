@@ -97,8 +97,10 @@ module Api
           :title, :description, :price, :discount,
           :listing_type, :status, :category_id,
           property_location_attributes: %i[
-      country region city street house_number map_link is_info_hidden country_code region_code city_code geo_city_id
-    ]
+            country region city street house_number map_link is_info_hidden
+            country_code region_code city_code geo_city_id
+          ],
+          property_characteristic_values_attributes: %i[ property_characteristic_id value ]
         )
       end
     end

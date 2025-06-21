@@ -6,6 +6,9 @@ class Property < ApplicationRecord
   has_one :property_location, dependent: :destroy
   accepts_nested_attributes_for :property_location, allow_destroy: true, reject_if: :all_blank
 
+  has_many :property_characteristic_values, dependent: :destroy
+  accepts_nested_attributes_for :property_characteristic_values, allow_destroy: true
+
   enum :listing_type, { sale: 0, rent: 1 }, default: :sale
   enum :status, { pending: 0, active: 1, sold: 2, rented: 3, cancelled: 4 }, default: :pending
 

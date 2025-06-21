@@ -14,4 +14,6 @@
 # @!attribute updated_at [DateTime] Дата обновления
 class PropertyCharacteristicSerializer < ActiveModel::Serializer
   attributes :id, :title, :unit, :field_type, :is_active, :is_private, :position, :created_at, :updated_at
+
+  has_many :options, if: -> { object.field_type == "select" }, serializer: PropertyCharacteristicOptionSerializer
 end
