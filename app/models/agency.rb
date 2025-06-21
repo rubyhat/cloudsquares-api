@@ -17,12 +17,12 @@ class Agency < ApplicationRecord
   has_many :users, through: :user_agencies, dependent: :restrict_with_error
 
   # TODO: раскомментировать после создания моделей Property, BuyRequest, SellRequest
-  # has_many :properties, dependent: :restrict_with_error
+  has_many :properties, dependent: :restrict_with_error
   # has_many :buy_requests, dependent: :restrict_with_error
   # has_many :sell_requests, dependent: :restrict_with_error
 
   # В будущем:
-  # belongs_to :agency_plan
+  belongs_to :agency_plan
   # belongs_to :billing_user, class_name: "User", optional: true
 
   # Валидации

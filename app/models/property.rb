@@ -4,6 +4,7 @@ class Property < ApplicationRecord
   belongs_to :category, class_name: "PropertyCategory"
 
   has_one :property_location, dependent: :destroy
+  accepts_nested_attributes_for :property_location, allow_destroy: true, reject_if: :all_blank
 
   enum :listing_type, { sale: 0, rent: 1 }, default: :sale
   enum :status, { pending: 0, active: 1, sold: 2, rented: 3, cancelled: 4 }, default: :pending
@@ -25,9 +26,10 @@ class Property < ApplicationRecord
     create_property_location!(
       country: "", region: "", city: "", street: "",
       house_number: "", is_info_hidden: true
-    )
-    create_property_owner!(
-      full_name: "", phone: "", email: "", notes: ""
-    )
+    ) unless property_location.present?
+
+    # create_property_owner!(
+    #   full_name: "", phone: "", email: "", notes: ""
+    # ) unless property_owner.present?
   end
 end

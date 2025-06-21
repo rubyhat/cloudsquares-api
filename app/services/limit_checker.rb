@@ -46,4 +46,11 @@ class LimitChecker
     return false if max_allowed.nil? # бесконечный лимит
     current_count >= max_allowed
   end
+
+  def self.check!(limit_key, agency)
+    if exceeded?(limit_key, agency)
+      raise Pundit::NotAuthorizedError, "Limit exceeded for #{limit_key}"
+    end
+  end
+
 end

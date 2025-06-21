@@ -1,4 +1,5 @@
 class PropertyPolicy < ApplicationPolicy
+  # Может ли пользователь просматривать список объектов недвижимости?
   def index?
     true
   end

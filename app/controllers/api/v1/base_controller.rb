@@ -61,12 +61,7 @@ module Api
                             if payload.present? && payload["type"] == "access"
                               User.find_by(id: payload["sub"])
                             else
-                              render_error(
-                                key: "user.not_found",
-                                message: "Пользователь не найден",
-                                status: :forbidden,
-                                code: 403
-                              )
+                              nil
                             end
                           end
       end

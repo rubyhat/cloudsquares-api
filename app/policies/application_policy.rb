@@ -23,22 +23,22 @@ class ApplicationPolicy
   # Роли пользователя
 
   # Пользователь с ролью супер-администратор
-  def admin? = user.role == "admin"
+  def admin? = user&.role == "admin"
 
   # Администратор с ограниченными правами
-  def admin_manager? = user.role == "admin_manager"
+  def admin_manager? = user&.role == "admin_manager"
 
   # Админ агентства недвижимости
-  def agent_admin? = user.role == "agent_admin"
+  def agent_admin? = user&.role == "agent_admin"
 
   # Менеджер агентства недвижимости
-  def agent_manager? = user.role == "agent_manager"
+  def agent_manager? = user&.role == "agent_manager"
 
   # Рядовой агент
-  def agent? = user.role == "agent"
+  def agent? = user&.role == "agent"
 
   # Обычный пользователь (B2C)
-  def user? = user.role == "user"
+  def user? = user&.role == "user"
 
   # Общие уровни доступа
 
@@ -69,7 +69,7 @@ class ApplicationPolicy
   # Сущность принадлежит агентству или представляет самого пользователя
   def same_agency_or_self?
     same_agency? ||
-      (record.respond_to?(:id) && record.id == user.id)
+      (record.respond_to?(:id) && record.id == user&.id)
   end
 
   # Пользователь является владельцем ресурса в рамках агентства
@@ -84,7 +84,7 @@ class ApplicationPolicy
 
   # Пользователь управляет исключительно своим собственным профилем
   def self_user?
-    record.respond_to?(:id) && record.id == user.id
+    record.respond_to?(:id) && record.id == user&.id
   end
 
   # --- Базовые политики доступа (по умолчанию запрещены) ---

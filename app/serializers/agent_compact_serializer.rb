@@ -1,3 +1,3 @@
 class AgentCompactSerializer < ActiveModel::Serializer
-  attributes :id, :full_name, :phone
+  attributes :id, :first_name, :last_name, :middle_name, :phone
 end

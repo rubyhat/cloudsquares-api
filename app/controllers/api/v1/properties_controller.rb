@@ -7,7 +7,13 @@ module Api
 
       def index
         authorize Property
-        properties = Property.active.where(agency_id: Current.agency.id).includes(:property_location)
+        # TODO: Определять недвижимость агентства по имени хосту в продакшене! Сейчас временно передаем айди черзе параметры
+        properties = if Current.guest?
+           Property.active.where(status: :active, agency_id: temp_params[:agency_id]).includes(:property_location)
+        else
+           Property.active.where( agency_id: temp_params[:agency_id]).includes(:property_location)
+        end
+
         render json: properties, each_serializer: PropertySerializer
       end
 
@@ -20,15 +26,11 @@ module Api
             message: "Объект недвижимости был деактивирован",
             status: :not_found,
             code: 404
-          ) unless current_user&.admin? || current_user&.admin_manager?
+          ) unless  current_user&.admin? || current_user&.admin_manager?
         end
 
-        if @property.active? || current_user.present?
-          authorize @property
-          render json: @property, serializer: PropertySerializer
-        else
-          render_not_found
-        end
+        authorize @property
+        render json: @property, serializer: PropertySerializer, status: :ok
       end
 
       def create
@@ -82,6 +84,10 @@ module Api
 
       private
 
+      def temp_params
+        params.permit(:agency_id)
+      end
+
       def set_property
         @property = Property.find(params[:id])
       end
@@ -89,7 +95,10 @@ module Api
       def property_params
         params.require(:property).permit(
           :title, :description, :price, :discount,
-          :listing_type, :status, :category_id
+          :listing_type, :status, :category_id,
+          property_location_attributes: %i[
+      country region city street house_number map_link is_info_hidden country_code region_code city_code geo_city_id
+    ]
         )
       end
     end

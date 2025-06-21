@@ -1,6 +1,8 @@
 class PropertySerializer < ActiveModel::Serializer
   attributes :id, :title, :description, :price, :discount,
-             :listing_type, :status, :created_at, :updated_at
+             :listing_type, :status, :created_at, :updated_at, :is_active
+
+  # TODO: добавить отображение флага deleted и дату с временем
 
   belongs_to :category, serializer: PropertyCategorySerializer
   belongs_to :agent, serializer: AgentCompactSerializer

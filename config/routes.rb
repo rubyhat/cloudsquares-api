@@ -1,3 +1,4 @@
+# config/routes.rb
 Rails.application.routes.draw do
   if Rails.env.development? || Rails.env.test?
     mount Rswag::Ui::Engine => "/api-docs"
@@ -9,50 +10,42 @@ Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
       # Аутентификация
-      post "auth/login",   to: "auth#login"
-      post "auth/refresh", to: "auth#refresh"
-      post "auth/logout",  to: "auth#logout"
-
-      # Создание нового пользователя B2B в роли agent_admin
-      post "auth/register-agent", to: "auth#register_agent_admin"
-
-      # Создание нового пользователя B2C в роли user
-      post "auth/register-user", to: "auth#register_user"
+      post "auth/login",           to: "auth#login"
+      post "auth/refresh",         to: "auth#refresh"
+      post "auth/logout",          to: "auth#logout"
+      post "auth/register-agent",  to: "auth#register_agent_admin"
+      post "auth/register-user",   to: "auth#register_user"
 
       # Текущий пользователь
       get :me, to: "users#me"
-
-      # Пользователи
       resources :users
 
       # Агентства недвижимости
       resources :agencies, only: %i[index show create update destroy]
-
-      # Тарифные планы для агентств недвижимости
-      resources :agency_plans, only: %i[index show create update destroy]
-
-      # Обновление тарифного плана у агентства недвижимости
       patch "agencies/:id/change_plan", to: "agencies#change_plan"
 
-      # Настройки Агентства
+      #  Настройки агентства
       get "my_agency/setting", to: "agency_settings#my_agency"
-      resources :agency_settings, only: [:show, :update]
+      resources :agency_settings, only: %i[show update]
+
+      # Тарифные планы агентств
+      resources :agency_plans, only: %i[index show create update destroy]
 
       # Категории объектов недвижимости
-      resources :property_categories, only: %i[index show create update destroy]
-      resources :property_categories do
-        get :characteristics, on: :member # GET /property_categories/:id/characteristics
+      resources :property_categories, only: %i[index show create update destroy] do
+        get :characteristics, on: :member
       end
 
       # Характеристики недвижимости
-      resources :property_characteristics
       resources :property_characteristics do
-        get :categories, on: :member # GET /api/v1/property_characteristics/:id/categories
+        get :categories, on: :member
       end
 
-      # Методы привязки характеристики недвижимости к категории недвижимости
+      # Привязка характеристик к категориям
       resources :property_category_characteristics, only: %i[create destroy]
+
+      # 🏠 Объекты недвижимости
+      resources :properties
     end
   end
-
 end
