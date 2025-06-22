@@ -1,3 +1,6 @@
+# frozen_string_literal: true
+
+# Сериализатор для объекта недвижимости, включает характеристики и владельцев
 class PropertySerializer < ActiveModel::Serializer
   attributes :id, :title, :description, :price, :discount,
              :listing_type, :status, :created_at, :updated_at, :is_active,
@@ -7,6 +10,9 @@ class PropertySerializer < ActiveModel::Serializer
   belongs_to :agent, serializer: AgentCompactSerializer
   belongs_to :agency, serializer: AgencyCompactSerializer
   has_one :property_location, serializer: PropertyLocationSerializer
+
+  # Правильное подключение коллекции владельцев через has_many с условием
+  has_many :property_owners, serializer: PropertyOwnerSerializer, if: :show_owner_data?
 
   # Кастомные характеристики объекта недвижимости
   #
@@ -20,6 +26,21 @@ class PropertySerializer < ActiveModel::Serializer
         value: cast_value(value_record)
       }
     end
+  end
+
+  # Возвращает только активных владельцев недвижимости
+  #
+  # @return [ActiveRecord::Relation]
+  def property_owners
+    object.property_owners.active
+  end
+
+  # Показывать ли данные о владельцах
+  #
+  # @return [Boolean]
+  def show_owner_data?
+    return false unless Current.user.present? && Current.agency.present?
+    object.agency_id == Current.agency.id
   end
 
   private

@@ -4,14 +4,14 @@ class PropertyComment < ApplicationRecord
   belongs_to :property
   belongs_to :user
 
-  # Комментарий может быть удалён, но не физически
-  scope :active, -> { where(is_deleted: false) }
-
   validates :body, presence: true
 
   # Санитизация Rich Text комментария от XSS
   before_save :sanitize_body
   before_update :track_edit
+
+  # Комментарий может быть удалён, но не физически
+  scope :active, -> { where(is_deleted: false) }
 
   # TODO: проверить все модели, где-то is_active где-то is_deleted меняется
   def soft_delete!

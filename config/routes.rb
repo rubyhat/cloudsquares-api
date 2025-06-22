@@ -47,9 +47,10 @@ Rails.application.routes.draw do
       # Объекты недвижимости
       resources :properties
 
-      # Комментарии к объектам недвижимости
+      # Комментарии, данные о владельце к объектам недвижимости
       resources :properties, only: [] do
         resources :comments, controller: "property_comments", only: %i[index create update destroy]
+        resources :owners, controller: "property_owners", only: %i[index show create update destroy]
       end
     end
   end
