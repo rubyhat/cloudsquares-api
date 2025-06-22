@@ -3,6 +3,8 @@ class Property < ApplicationRecord
   belongs_to :agent, class_name: "User"
   belongs_to :category, class_name: "PropertyCategory"
 
+  has_many :property_buy_requests, dependent: :destroy
+
   has_many :property_owners, dependent: :destroy
   accepts_nested_attributes_for :property_owners, allow_destroy: true
 

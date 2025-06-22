@@ -7,6 +7,8 @@ class Agency < ApplicationRecord
   has_many :property_categories, dependent: :destroy
   has_many :property_characteristics, dependent: :destroy
 
+  has_many :property_buy_requests, dependent: :nullify
+
   after_create :create_agency_setting!
   after_create :seed_default_data!
 

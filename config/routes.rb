@@ -52,6 +52,9 @@ Rails.application.routes.draw do
         resources :comments, controller: "property_comments", only: %i[index create update destroy]
         resources :owners, controller: "property_owners", only: %i[index show create update destroy]
       end
+
+      # Заявки на покупку недвижимости
+      resources :property_buy_requests, only: %i[index show create destroy update]
     end
   end
 end

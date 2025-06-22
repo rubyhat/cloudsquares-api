@@ -12,6 +12,7 @@ class User < ApplicationRecord
   has_many :user_agencies, dependent: :restrict_with_error
   has_many :agencies, through: :user_agencies
   has_many :property_comments, dependent: :nullify
+  has_many :property_buy_requests, dependent: :nullify
 
   # Текущие доступные регионы
   VALID_COUNTRY_CODES = %w[RU KZ BY].freeze

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_06_22_063847) do
+ActiveRecord::Schema[8.0].define(version: 2025_06_22_135834) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -125,6 +125,27 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_22_063847) do
     t.index ["agent_id"], name: "index_properties_on_agent_id"
     t.index ["category_id"], name: "index_properties_on_category_id"
     t.index ["is_active"], name: "index_properties_on_is_active"
+  end
+
+  create_table "property_buy_requests", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "property_id", null: false
+    t.uuid "agency_id", null: false
+    t.uuid "user_id"
+    t.string "first_name", null: false
+    t.string "last_name"
+    t.string "phone", null: false
+    t.text "comment"
+    t.text "response_message"
+    t.integer "status", default: 0, null: false
+    t.boolean "is_deleted", default: false, null: false
+    t.datetime "deleted_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agency_id", "status"], name: "index_property_buy_requests_on_agency_id_and_status"
+    t.index ["agency_id"], name: "index_property_buy_requests_on_agency_id"
+    t.index ["property_id", "is_deleted"], name: "index_property_buy_requests_on_property_id_and_is_deleted"
+    t.index ["property_id"], name: "index_property_buy_requests_on_property_id"
+    t.index ["user_id"], name: "index_property_buy_requests_on_user_id"
   end
 
   create_table "property_categories", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -276,6 +297,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_22_063847) do
   add_foreign_key "agencies", "agency_plans"
   add_foreign_key "agencies", "users", column: "created_by_id"
   add_foreign_key "agency_settings", "agencies"
+  add_foreign_key "property_buy_requests", "agencies"
+  add_foreign_key "property_buy_requests", "properties"
+  add_foreign_key "property_buy_requests", "users"
   add_foreign_key "property_categories", "agencies"
   add_foreign_key "property_categories", "property_categories", column: "parent_id"
   add_foreign_key "property_category_characteristics", "property_categories"
