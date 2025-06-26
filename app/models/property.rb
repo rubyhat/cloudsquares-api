@@ -16,6 +16,8 @@ class Property < ApplicationRecord
 
   has_many :property_comments, dependent: :destroy
 
+  has_many :property_photos, dependent: :destroy
+
   enum :listing_type, { sale: 0, rent: 1 }, default: :sale
   enum :status, { pending: 0, active: 1, sold: 2, rented: 3, cancelled: 4 }, default: :pending
 
@@ -24,7 +26,7 @@ class Property < ApplicationRecord
 
   after_create :create_default_associations
 
-  scope :active, -> { where(is_active: true) }
+  scope :available, -> { where(is_active: true) }
 
   def soft_delete!
     update(is_active: false, deleted_at: Time.zone.now)

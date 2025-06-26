@@ -10,6 +10,7 @@ class PropertySerializer < ActiveModel::Serializer
   belongs_to :agent, serializer: AgentCompactSerializer
   belongs_to :agency, serializer: AgencyCompactSerializer
   has_one :property_location, serializer: PropertyLocationSerializer
+  has_many :property_photos, serializer: PropertyPhotoSerializer
 
   # Правильное подключение коллекции владельцев через has_many с условием
   has_many :property_owners, serializer: PropertyOwnerSerializer, if: :show_owner_data?

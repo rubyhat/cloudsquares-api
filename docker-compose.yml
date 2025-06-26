@@ -65,6 +65,28 @@ services:
       - "6378:6379"
       # Открываем порт Redis (в dev можно, в продакшене — закрыть через firewall или убрать entirely)
 
+  sidekiq:
+    build:
+      context: .
+      args:
+        TARGET_PLATFORM: ${TARGET_PLATFORM:-linux/arm64}
+    container_name: cloudsquares-sidekiq
+    command: bundle exec sidekiq -C config/sidekiq.yml
+    depends_on:
+      - redis
+      - db
+    env_file:
+      - .env.${RAILS_ENV:-development}
+    environment:
+      RAILS_ENV: ${RAILS_ENV:-development}
+    volumes:
+      - .:/app
+
 volumes:
   postgres_data:
   # Объявляем volume для PostgreSQL, чтобы данные не терялись между запусками
+
+networks:
+  default:
+    name: cloudsquares-net
+    external: true

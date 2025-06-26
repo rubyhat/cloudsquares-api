@@ -145,4 +145,5 @@ db-seed-prod:
 rails-c-prod:
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production exec web bin/rails console
 
-
+sidekiq:
+	docker compose up sidekiq

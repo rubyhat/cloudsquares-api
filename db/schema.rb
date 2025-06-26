@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_06_22_135834) do
+ActiveRecord::Schema[8.0].define(version: 2025_06_25_174852) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -262,6 +262,22 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_22_135834) do
     t.index ["user_id"], name: "index_property_owners_on_user_id"
   end
 
+  create_table "property_photos", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "property_id", null: false
+    t.string "file_url", null: false
+    t.string "file_preview_url"
+    t.string "file_retina_url"
+    t.boolean "is_main", default: false, null: false
+    t.integer "position", default: 1, null: false
+    t.string "access", default: "public", null: false
+    t.uuid "uploaded_by_id", null: false
+    t.uuid "agency_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["property_id", "is_main"], name: "index_property_photos_on_property_id_main", unique: true, where: "(is_main = true)"
+    t.index ["property_id"], name: "index_property_photos_on_property_id"
+  end
+
   create_table "user_agencies", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "user_id", null: false
     t.uuid "agency_id", null: false
@@ -313,6 +329,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_22_135834) do
   add_foreign_key "property_locations", "properties"
   add_foreign_key "property_owners", "properties"
   add_foreign_key "property_owners", "users"
+  add_foreign_key "property_photos", "properties"
   add_foreign_key "user_agencies", "agencies"
   add_foreign_key "user_agencies", "users"
 end

@@ -372,6 +372,10 @@ GEM
       logger (>= 1.6.2)
       rack (>= 3.1.0)
       redis-client (>= 0.23.2)
+    sidekiq-unique-jobs (8.0.11)
+      concurrent-ruby (~> 1.0, >= 1.0.5)
+      sidekiq (>= 7.0.0, < 9.0.0)
+      thor (>= 1.0, < 3.0)
     solid_cable (3.0.8)
       actioncable (>= 7.2)
       activejob (>= 7.2)
@@ -451,6 +455,7 @@ DEPENDENCIES
   rubocop-rails-omakase
   shoulda-matchers
   sidekiq (~> 8.0)
+  sidekiq-unique-jobs
   solid_cable
   solid_cache
   solid_queue

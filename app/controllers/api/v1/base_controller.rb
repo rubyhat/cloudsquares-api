@@ -31,13 +31,14 @@ module Api
         if agency.present?
           @current_agency = agency
           Current.agency = agency
-        else
-          render_error(
-            key: "auth.no_agency",
-            message: "Пользователь не привязан ни к одному агентству",
-            status: :forbidden,
-            code: 403
-          )
+        # TODO: если раскомментировать код, то не создается агентство, пофиксить
+        # else
+        #   render_error(
+        #     key: "auth.no_agency",
+        #     message: "Пользователь не привязан ни к одному агентству",
+        #     status: :forbidden,
+        #     code: 403
+        #   )
         end
       end
 

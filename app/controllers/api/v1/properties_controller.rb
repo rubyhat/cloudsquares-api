@@ -9,9 +9,9 @@ module Api
         authorize Property
         # TODO: Определять недвижимость агентства по имени хосту в продакшене! Сейчас временно передаем айди черзе параметры
         properties = if Current.guest?
-           Property.active.where(status: :active, agency_id: temp_params[:agency_id]).includes(:property_location)
+           Property.available.where(status: :active, agency_id: temp_params[:agency_id]).includes(:property_location)
         else
-           Property.active.where( agency_id: temp_params[:agency_id]).includes(:property_location)
+           Property.available.where( agency_id: temp_params[:agency_id]).includes(:property_location)
         end
 
         render json: properties, each_serializer: PropertySerializer
@@ -19,6 +19,17 @@ module Api
 
       def show
         @property = Property.find(params[:id])
+        authorize @property
+
+        # TODO: надо подумать, будем ли отдавать на просмотр удаленные объекты(отображать как "объявление в архиве") и другие статусы, кроме active ?
+        if !@property.active? && (Current.guest? || Current.user&.role == "user")
+          return render_error(
+            key: "properties.not_ready_to_view",
+            message: "Объект недвижимости еще не готов к просмотру",
+            status: :not_found,
+            code: 404
+          )
+        end
 
         unless @property.is_active?
           return render_error(
@@ -29,7 +40,6 @@ module Api
           ) unless  current_user&.admin? || current_user&.admin_manager?
         end
 
-        authorize @property
         render json: @property, serializer: PropertySerializer, status: :ok
       end
 

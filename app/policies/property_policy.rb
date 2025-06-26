@@ -5,7 +5,8 @@ class PropertyPolicy < ApplicationPolicy
   end
 
   def show?
-    record.active? || manage?
+    # TODO: надо подумать, будем ли отдавать на просмотр удаленные объекты(отображать как "объявление в архиве") и другие статусы, кроме active ?
+    record.is_active? || manage?
   end
 
   def create?

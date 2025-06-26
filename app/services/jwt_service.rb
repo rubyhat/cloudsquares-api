@@ -21,6 +21,9 @@ class JwtService
       now = Time.zone.now
       iat = now.to_i
 
+      # Попытка взять agency_id, если есть default_agency
+      agency_id = user.default_agency&.id
+
       access_payload = {
         sub: user.id,
         exp: (now + JwtConfig.access_token_ttl).to_i,
@@ -28,7 +31,8 @@ class JwtService
         type: "access",
         role: user.role,
         phone: user.phone,
-        first_name: user.first_name || user_name(user)
+        first_name: user.first_name || user_name(user),
+        agency_id: agency_id
       }
 
       refresh_payload = {

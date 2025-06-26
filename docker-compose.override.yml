@@ -25,13 +25,19 @@ services:
       - .:/app
       - /app/vendor
 
-    # Прокидываем порт 3000 наружу, чтобы приложение было доступно по http://localhost:3000
+    # Прокидываем порт 3001 наружу, чтобы приложение было доступно по http://localhost:3001
     ports:
       - "3001:3001"
 
   redis:
     ports:
       - "6378:6379"
+
+  sidekiq:
+    command: bundle exec sidekiq -C config/sidekiq.yml
+    volumes:
+      - .:/app
+    ports: [ ]
 
   db:
     # Открываем порт PostgreSQL для подключения снаружи (например, через Postico)

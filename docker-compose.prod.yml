@@ -36,5 +36,23 @@ services:
     # НЕ открывай порты наружу!
     # ports: []
 
+  sidekiq:
+    build:
+      context: .
+      args:
+        TARGET_PLATFORM: ${TARGET_PLATFORM:-linux/amd64}
+    container_name: cloudsquares-sidekiq
+    command: bundle exec sidekiq -C config/sidekiq.yml
+    depends_on:
+      - redis
+      - db
+    env_file:
+      - .env.production
+    environment:
+      RAILS_ENV: production
+    restart: always
+    volumes:
+      - .:/app
+
 volumes:
   postgres_data:

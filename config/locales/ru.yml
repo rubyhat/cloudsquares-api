@@ -1,0 +1,5 @@
+ru:
+  activerecord:
+    errors:
+      messages:
+        record_invalid: "Ошибка валидации: %{errors}"
