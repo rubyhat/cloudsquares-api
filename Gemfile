@@ -44,7 +44,7 @@ gem "thruster", require: false
 
 group :development, :test do
   # 🧪 Testing
-  gem "factory_bot_rails", "~> 6.4", ">= 6.4.4"
+  gem "factory_bot_rails", "~> 6.5"
   gem "faker", "~> 3.5", ">= 3.5.1"
   gem "rspec-rails", "~> 7.1", ">= 7.1.1"
   gem "rswag", "~> 2.16"
