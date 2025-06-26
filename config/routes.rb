@@ -9,7 +9,8 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :internal do
-      resources :photo_jobs, only: [:create]
+      post   "photo_jobs",         to: "photo_jobs#create"
+      delete "photo_jobs/delete",  to: "photo_jobs#delete"
     end
     namespace :v1 do
       # Аутентификация
