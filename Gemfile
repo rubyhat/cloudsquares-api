@@ -20,7 +20,7 @@ gem "solid_queue"
 gem "solid_cable"
 
 # 🔐 Auth, Authorization, Environment
-gem "jwt", "~> 2.10"
+gem "jwt", "~> 3.1"
 gem "pundit", "~> 2.5"
 gem "dotenv-rails", "~> 3.1"
 
