@@ -5,6 +5,7 @@ class PropertyBuyRequest < ApplicationRecord
   belongs_to :property
   belongs_to :agency
   belongs_to :user, optional: true
+  belongs_to :customer, optional: true
 
   scope :active, -> { where(is_deleted: false) }
 

@@ -6,6 +6,7 @@ class Agency < ApplicationRecord
   has_one :agency_setting, dependent: :destroy
   has_many :property_categories, dependent: :destroy
   has_many :property_characteristics, dependent: :destroy
+  has_many :customers, dependent: :destroy
 
   has_many :property_buy_requests, dependent: :nullify
 

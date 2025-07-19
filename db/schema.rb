@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_06_25_174852) do
+ActiveRecord::Schema[8.0].define(version: 2025_07_19_184006) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -82,6 +82,25 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_25_174852) do
     t.index ["title"], name: "index_countries_on_title", unique: true
   end
 
+  create_table "customers", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "agency_id", null: false
+    t.uuid "user_id"
+    t.string "first_name"
+    t.string "last_name"
+    t.string "middle_name"
+    t.string "phones", default: [], null: false, array: true
+    t.string "names", default: [], null: false, array: true
+    t.integer "service_type", default: 0, null: false
+    t.uuid "property_ids", default: [], array: true
+    t.text "notes"
+    t.boolean "is_active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agency_id"], name: "index_customers_on_agency_id"
+    t.index ["phones"], name: "index_customers_on_phones", using: :gin
+    t.index ["user_id"], name: "index_customers_on_user_id"
+  end
+
   create_table "mobility_string_translations", force: :cascade do |t|
     t.string "locale", null: false
     t.string "key", null: false
@@ -141,8 +160,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_25_174852) do
     t.datetime "deleted_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.uuid "customer_id"
     t.index ["agency_id", "status"], name: "index_property_buy_requests_on_agency_id_and_status"
     t.index ["agency_id"], name: "index_property_buy_requests_on_agency_id"
+    t.index ["customer_id"], name: "index_property_buy_requests_on_customer_id"
     t.index ["property_id", "is_deleted"], name: "index_property_buy_requests_on_property_id_and_is_deleted"
     t.index ["property_id"], name: "index_property_buy_requests_on_property_id"
     t.index ["user_id"], name: "index_property_buy_requests_on_user_id"
@@ -313,7 +334,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_25_174852) do
   add_foreign_key "agencies", "agency_plans"
   add_foreign_key "agencies", "users", column: "created_by_id"
   add_foreign_key "agency_settings", "agencies"
+  add_foreign_key "customers", "agencies"
+  add_foreign_key "customers", "users"
   add_foreign_key "property_buy_requests", "agencies"
+  add_foreign_key "property_buy_requests", "customers"
   add_foreign_key "property_buy_requests", "properties"
   add_foreign_key "property_buy_requests", "users"
   add_foreign_key "property_categories", "agencies"

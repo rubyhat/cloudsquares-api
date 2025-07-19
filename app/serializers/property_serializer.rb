@@ -2,9 +2,17 @@
 
 # Сериализатор для объекта недвижимости, включает характеристики и владельцев
 class PropertySerializer < ActiveModel::Serializer
-  attributes :id, :title, :description, :price, :discount,
+  attributes :id, :title, :description,
              :listing_type, :status, :created_at, :updated_at, :is_active,
              :characteristics
+
+  attribute :price do
+    object.price.round(2).to_f
+  end
+
+  attribute :discount do
+    object.discount.round(2).to_f
+  end
 
   belongs_to :category, serializer: PropertyCategorySerializer
   belongs_to :agent, serializer: AgentCompactSerializer

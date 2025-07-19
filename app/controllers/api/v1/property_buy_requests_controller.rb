@@ -29,6 +29,7 @@ module Api
       def create
         request = PropertyBuyRequest.new(buy_request_params)
 
+        # Если пользователь авторизован — используем его данные
         if current_user
           request.user = current_user
           request.first_name ||= current_user&.first_name
@@ -38,6 +39,21 @@ module Api
 
         # Автозаполнение agency_id через property
         request.agency_id = request.property.agency_id if request.property.present?
+
+        # Поиск или создание клиента
+        customer = Customers::CustomerFinderOrCreatorService.new(
+          phone: request.phone,
+          attributes: {
+            first_name: request.first_name,
+            last_name: request.last_name,
+            service_type: "buy",
+            user_id: current_user&.id,
+            property_ids: [request.property_id].compact
+          },
+          agency: request.agency
+        ).call
+
+        request.customer = customer
 
         authorize request
 
