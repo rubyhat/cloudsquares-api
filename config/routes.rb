@@ -59,6 +59,9 @@ Rails.application.routes.draw do
 
       # Заявки на покупку недвижимости
       resources :property_buy_requests, only: %i[index show create destroy update]
+
+      # Клиенты агентства
+      resources :customers, only: %i[index show create update destroy]
     end
   end
 end

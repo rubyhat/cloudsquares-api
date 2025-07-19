@@ -5,7 +5,7 @@
 class CustomerPolicy < ApplicationPolicy
   # Просмотр списка клиентов
   def index?
-    manage_own_agency?
+    user_in_own_agency?
   end
 
   # Просмотр одного клиента
@@ -42,5 +42,12 @@ class CustomerPolicy < ApplicationPolicy
     def manage?
       user&.role.in?(%w[admin admin_manager agent_admin agent_manager agent])
     end
+  end
+  private
+  # Используется в index?, когда record — это модель, а не объект
+  def user_in_own_agency?
+    user.present? &&
+      %w[admin admin_manager agent_admin agent_manager agent].include?(user.role) &&
+      Current.agency.present?
   end
 end
