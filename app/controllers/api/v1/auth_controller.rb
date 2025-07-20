@@ -17,8 +17,8 @@ module Api
         user = User.find_by(phone: phone)
 
         if user&.authenticate(password)
-          tokens = JwtService.generate_tokens(user)
-          TokenStorageRedis.save(user_id: user.id, iat: tokens[:iat])
+          tokens = Auth::JwtService.generate_tokens(user)
+          Auth::TokenStorageRedis.save(user_id: user.id, iat: tokens[:iat])
 
           render json: {
             access_token: tokens[:access_token],
@@ -38,14 +38,14 @@ module Api
       #
       # Проверяет refresh_token, если валиден — выдает новую пару токенов.
       def refresh
-        payload = JwtService.decode_and_verify(params[:refresh_token])
+        payload = Auth::JwtService.decode_and_verify(params[:refresh_token])
 
         if payload.present? && payload["type"] == "refresh"
           user = User.find_by(id: payload["sub"])
 
-          if user && TokenStorageRedis.valid?(user_id: user.id, iat: payload["iat"])
-            tokens = JwtService.generate_tokens(user)
-            TokenStorageRedis.save(user_id: user.id, iat: tokens[:iat])
+          if user && Auth::TokenStorageRedis.valid?(user_id: user.id, iat: payload["iat"])
+            tokens = Auth::JwtService.generate_tokens(user)
+            Auth::TokenStorageRedis.save(user_id: user.id, iat: tokens[:iat])
 
             render json: {
               access_token: tokens[:access_token],
@@ -69,10 +69,10 @@ module Api
       # Удаляет refresh_token пользователя из Redis.
       def logout
         token = request.headers["Authorization"]&.split&.last
-        payload = JwtService.decode(token)
+        payload = Auth::JwtService.decode(token)
 
         if payload && payload["sub"]
-          TokenStorageRedis.clear(user_id: payload["sub"])
+          Auth::TokenStorageRedis.clear(user_id: payload["sub"])
         end
 
         render_success(key: "auth.logout", message: "Вы вышли из системы")
@@ -100,8 +100,8 @@ module Api
         user.role = role
 
         if user.save
-          tokens = JwtService.generate_tokens(user)
-          TokenStorageRedis.save(user_id: user.id, iat: tokens[:iat])
+          tokens = Auth::JwtService.generate_tokens(user)
+          Auth::TokenStorageRedis.save(user_id: user.id, iat: tokens[:iat])
 
           render json: {
             user: UserSerializer.new(user, scope: user),

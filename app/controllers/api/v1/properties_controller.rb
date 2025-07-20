@@ -50,7 +50,7 @@ module Api
         property.status = Property.statuses[:pending]
 
         authorize property
-        LimitChecker.check!(:properties, Current.agency)
+        Shared::LimitChecker.check!(:properties, Current.agency)
 
         if property.save
           render json: property, serializer: PropertySerializer, status: :created

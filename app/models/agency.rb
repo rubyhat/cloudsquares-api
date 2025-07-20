@@ -59,6 +59,6 @@ class Agency < ApplicationRecord
 
   # Создаем базовые категории и характеристики сразу после создания агентства
   def seed_default_data!
-    AgencyTemplateSeeder.new(self).call
+    Agencies::TemplateSeeder.new(self).call
   end
 end
