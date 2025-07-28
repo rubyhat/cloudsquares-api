@@ -1,0 +1,16 @@
+kz:
+  errors:
+    messages:
+      taken: "бұрыннан тіркелген"
+
+  activerecord:
+    errors:
+      messages:
+        record_invalid: "Деректерді тексеру қатесі: %{errors}"
+      models:
+        user:
+          attributes:
+            phone:
+              taken: "Бұл телефон нөмірі бұрыннан тіркелген"
+            email:
+              taken: "Бұл email бұрыннан тіркелген"

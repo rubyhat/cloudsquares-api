@@ -184,7 +184,7 @@ module ApiErrorHandling
         message: "Ошибка валидации",
         code: 422,
         status: :unprocessable_entity,
-        details: resource.errors.to_hash(true)
+        details: resource.errors.messages
       }
     }, status: :unprocessable_entity
   end

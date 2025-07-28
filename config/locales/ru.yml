@@ -1,5 +1,14 @@
 ru:
+  errors:
+    messages:
+      taken: "уже используется"
+
   activerecord:
     errors:
-      messages:
-        record_invalid: "Ошибка валидации: %{errors}"
+      models:
+        user:
+          attributes:
+            phone:
+              taken: "Этот номер телефона уже используется"
+            email:
+              taken: "Этот email уже зарегистрирован"

@@ -139,7 +139,7 @@ module Api
       rescue ActiveRecord::RecordNotFound
         render_not_found(
           key: "user.not_found",
-          message: "GПользователь не найден"
+          message: "Пользователь не найден"
         ) unless @user
       end
 
