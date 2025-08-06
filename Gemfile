@@ -30,7 +30,7 @@ gem "ransack", "~> 4.3"
 gem "pagy", "~> 9.3"
 
 # 🖼️ File & Image uploads
-gem "aws-sdk-s3", "~> 1.183"
+gem "aws-sdk-s3", "~> 1.196"
 gem "image_processing", "~> 1.14"
 
 # 🧰 Utilities
