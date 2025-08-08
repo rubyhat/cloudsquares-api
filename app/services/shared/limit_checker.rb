@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Сервис для проверки превышения лимитов, заданных тарифным планом агентства.
 #
 # Использование:
@@ -11,7 +13,7 @@ module Shared
     SUPPORTED_LIMITS = {
       employees: {
         plan_field: :max_employees,
-        counter: ->(agency) { agency.users.count }
+        counter: ->(agency) { agency.users.where(is_active: true).count }
       },
       properties: {
         plan_field: :max_properties,
@@ -19,15 +21,15 @@ module Shared
       },
       photos: {
         plan_field: :max_photos,
-        counter: ->(agency) { 0 } # Пока нет модели, можно заглушку
+        counter: ->(_agency) { 0 } # Пока нет реализации
       },
       buy_requests: {
         plan_field: :max_buy_requests,
-        counter: ->(agency) { 0 } # Пока нет модели, можно заглушку
+        counter: ->(_agency) { 0 }
       },
       sell_requests: {
         plan_field: :max_sell_requests,
-        counter: ->(agency) { 0 } # Пока нет модели, можно заглушку
+        counter: ->(_agency) { 0 }
       }
     }.freeze
 
@@ -48,11 +50,13 @@ module Shared
       current_count >= max_allowed
     end
 
+    # Бросает исключение, если лимит превышен
+    #
+    # @raise [Pundit::NotAuthorizedError]
     def self.check!(limit_key, agency)
       if exceeded?(limit_key, agency)
         raise Pundit::NotAuthorizedError, "Limit exceeded for #{limit_key}"
       end
     end
-
   end
 end

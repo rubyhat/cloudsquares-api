@@ -60,8 +60,7 @@ module Api
         # Ограничим создание только в рамках агентства текущего пользователя
         return render_forbidden(message: "Нет агентства по умолчанию") unless @current_agency
 
-        # ⚠️ TODO: временная проверка лимита (захардкожено 5 сотрудников)
-        if @current_agency.users.count >= 5
+        if Shared::LimitChecker.exceeded?(:employees, @current_agency)
           return render_error(
             key: "users.limit_exceeded",
             message: "Достигнут лимит сотрудников для агентства",

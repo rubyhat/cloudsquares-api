@@ -61,9 +61,10 @@ class ApplicationPolicy
 
   # Сущность принадлежит текущему агентству
   def same_agency?
-    Current.agency &&
-      record.respond_to?(:agency_id) &&
-      record.agency_id == Current.agency.id
+    return false unless Current.agency
+    return false unless record.is_a?(User)
+
+    UserAgency.exists?(agency_id: Current.agency.id, user_id: record.id)
   end
 
   # Сущность принадлежит агентству или представляет самого пользователя
