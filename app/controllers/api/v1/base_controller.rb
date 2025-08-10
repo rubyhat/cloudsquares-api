@@ -5,6 +5,7 @@ module Api
     class BaseController < ApplicationController
       include ApiErrorHandling
       include Pundit::Authorization
+      include PaginationConcern
 
       rescue_from Pundit::NotAuthorizedError, with: :render_pundit_forbidden
 

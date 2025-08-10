@@ -10,46 +10,29 @@ module Api
 
       # GET /api/v1/properties/:property_id/owners
       #
-      # Возвращает пагинированный список владельцев объекта недвижимости.
+      # Параметры:
+      # - per_page: Integer (default 20, max 100)
+      # - page:     Integer (default 1)
+      # - sort_by:  String  — одно из: created_at | role | phone
+      # - sort_dir: String  — asc | desc (по умолчанию asc)
       #
-      # Query params:
-      # - per_page: Integer — количество элементов на странице (по умолчанию 20, максимум 100)
-      # - page:     Integer — номер страницы, начиная с 1 (по умолчанию 1)
-      #
-      # Формат ответа:
-      # {
-      #   data:  [ ... PropertyOwnerSerializer ... ],
-      #   pages: Integer,  # всего страниц (ceil(total / per_page))
-      #   total: Integer   # всего записей без учёта пагинации
-      # }
       def index
         authorize PropertyOwner
 
-        # Базовый скоуп: только активные владельцы конкретного объекта
-        scope = @property.property_owners.active.order(created_at: :desc)
+        scope = @property.property_owners.active
 
-        # Параметры пагинации с безопасными значениями по умолчанию и ограничениями
-        per_page = pagination_params[:per_page].to_i
-        page     = pagination_params[:page].to_i
+        # Сортировка только по одному полю — whitelist:
+        order = safe_sort(
+          allowed: {
+            "created_at" => "property_owners.created_at",
+            "role"       => "property_owners.role",
+            "phone"      => "property_owners.phone"
+          },
+          default: { "property_owners.created_at" => :desc },
+          nulls_last: false
+        )
 
-        per_page = 20 if per_page <= 0
-        per_page = 100 if per_page > 100 # верхний кап, чтобы не уронить БД
-        page = 1 if page <= 0
-
-        # Подсчёт метрик до применения offset/limit
-        total = scope.count
-        pages = (total.to_f / per_page).ceil
-
-        owners = scope.offset((page - 1) * per_page).limit(per_page)
-
-        render json: {
-          data: ActiveModelSerializers::SerializableResource.new(
-            owners,
-            each_serializer: PropertyOwnerSerializer
-          ).as_json,
-          pages: pages,
-          total: total
-        }
+        render_paginated(scope, serializer: PropertyOwnerSerializer, order:)
       end
 
       # GET /api/v1/properties/:property_id/owners/:id
@@ -115,13 +98,6 @@ module Api
       end
 
       private
-
-      # Безопасный парсинг query‑параметров пагинации
-      #
-      # @return [ActionController::Parameters] разрешённые параметры { per_page, page }
-      def pagination_params
-        params.permit(:per_page, :page)
-      end
 
       # Поиск объекта недвижимости, к которому относятся владельцы
       def set_property
