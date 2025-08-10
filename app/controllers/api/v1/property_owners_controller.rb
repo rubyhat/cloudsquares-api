@@ -1,13 +1,26 @@
 # frozen_string_literal: true
 
+# Контроллер владельцев недвижимости.
+# Поддерживает два сценария:
+# 1) GET /api/v1/property_owners
+#    — список всех владельцев по текущему агентству (через Current.agency), с пагинацией и сортировкой.
+# 2) GET /api/v1/properties/:property_id/owners
+#    — список владельцев конкретного объекта, с пагинацией и сортировкой.
+#
+# Сортировка (одно поле):
+#   ?sort_by=created_at|role|phone & sort_dir=asc|desc
+# По умолчанию: created_at desc (новые сверху).
+#
 module Api
   module V1
     class PropertyOwnersController < BaseController
       before_action :authenticate_user!
-      before_action :set_property
+      # set_property нужен только для операций над конкретной записью/создания
+      before_action :set_property, only: %i[show create update destroy]
       before_action :set_owner, only: %i[show update destroy]
       after_action :verify_authorized
 
+      # GET /api/v1/property_owners
       # GET /api/v1/properties/:property_id/owners
       #
       # Параметры:
@@ -16,12 +29,27 @@ module Api
       # - sort_by:  String  — одно из: created_at | role | phone
       # - sort_dir: String  — asc | desc (по умолчанию asc)
       #
+      # Если передан :property_id — фильтруем по конкретному объекту.
+      # Иначе — возвращаем всех владельцев из текущего агентства (через join properties).
       def index
         authorize PropertyOwner
 
-        scope = @property.property_owners.active
+        # Базовый скоуп: владельцы в пределах текущего агентства
+        # join на properties, чтобы не утекали данные других агентств
+        scope = PropertyOwner
+                  .active
+                  .joins(:property)
+                  .where(properties: { agency_id: Current.agency.id })
 
-        # Сортировка только по одному полю — whitelist:
+        # Если пришёл property_id — дополнительно валидируем объект и фильтруем
+        if params[:property_id].present?
+          property = Property.find_by(id: params[:property_id])
+          return render_not_found("Объект недвижимости не найден", "properties.not_found") unless property
+
+          scope = scope.where(property_id: property.id)
+        end
+
+        # Сортировка по whitelist: created_at, role, phone
         order = safe_sort(
           allowed: {
             "created_at" => "property_owners.created_at",
@@ -99,7 +127,7 @@ module Api
 
       private
 
-      # Поиск объекта недвижимости, к которому относятся владельцы
+      # Поиск объекта недвижимости (для show/create/update/destroy)
       def set_property
         @property = Property.find(params[:property_id])
       rescue ActiveRecord::RecordNotFound

@@ -57,6 +57,9 @@ Rails.application.routes.draw do
         resources :owners, controller: "property_owners", only: %i[index show create update destroy]
       end
 
+      # Глобальный список владельцев по агентству:
+      resources :property_owners, only: %i[index]
+
       # Заявки на покупку недвижимости
       resources :property_buy_requests, only: %i[index show create destroy update]
 
