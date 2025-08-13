@@ -52,8 +52,8 @@ class Customer < ApplicationRecord
   # @param phone [String] телефон в любом формате
   # @return [ActiveRecord::Relation]
   scope :with_phone, lambda { |phone|
-    normalized = if defined?(PhoneNormalizer)
-                   PhoneNormalizer.normalize(phone)
+    normalized = if defined?(Shared::PhoneNormalizer)
+                   Shared::PhoneNormalizer.normalize(phone)
                  else
                    phone.to_s.gsub(/\D/, "")
                  end

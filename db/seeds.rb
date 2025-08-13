@@ -166,7 +166,7 @@ end
 # @return [String] нормализованный номер
 def normalize_phone(raw)
   if defined?(PhoneNormalizer)
-    PhoneNormalizer.normalize(raw)
+    ::Shared::PhoneNormalizer.normalize(raw)
   else
     raw.to_s.gsub(/\D+/, "")
   end

@@ -2,6 +2,16 @@
 
 module Api
   module V1
+    # CustomersController — CRUD для клиентов агентства.
+    #
+    # После перехода на Person/Contact:
+    # - Создание клиента делегируем сервису Customers::CustomerFinderOrCreatorService,
+    #   который делает upsert Person (по телефону) и Contact (в рамках Current.agency),
+    #   затем find_or_create Customer(agency_id, contact_id).
+    # - В index/show отдаём данные через сериализатор, который вытаскивает ФИО/телефон из contact/person.
+    #
+    # Безопасность:
+    # - Все действия подчиняются CustomerPolicy.
     class CustomersController < BaseController
       before_action :set_customer, only: %i[show update destroy]
       after_action :verify_authorized
@@ -9,7 +19,9 @@ module Api
       # GET /api/v1/customers
       #
       # Возвращает клиентов текущего агентства.
-      # Сериализатор отдаёт ФИО/телефон через contact/person для обратной совместимости.
+      # Сериализатор отдаёт ФИО/телефон через contact/person.
+      #
+      # @return [void]
       def index
         authorize Customer
         scope = policy_scope(Customer)
@@ -21,6 +33,8 @@ module Api
       end
 
       # GET /api/v1/customers/:id
+      #
+      # @return [void]
       def show
         authorize @customer
         render json: @customer, serializer: CustomerSerializer, status: :ok
@@ -28,13 +42,28 @@ module Api
 
       # POST /api/v1/customers
       #
-      # Создание клиента:
+      # Создание клиента через общий сервис:
       # - phone → Person (upsert по normalized_phone)
-      # - (first/last/middle/email/extra_phones) → Contact (в рамках Current.agency)
-      # - сам Customer получает contact_id и прочие поля (service_type, notes, user_id).
+      # - first/last/middle/email/extra_phones/notes → Contact (агентский профиль)
+      # - service_type/user_id → Customer
+      #
+      # Пример body:
+      # {
+      #   "customer": {
+      #     "phone": "8 (700) 123-45-67",
+      #     "first_name": "Иван",
+      #     "last_name": "Иванов",
+      #     "email": "ivan@example.com",
+      #     "extra_phones": ["+7 700 000 00 00"],
+      #     "service_type": "buy",
+      #     "user_id": "UUID",
+      #     "notes": "Комментарий менеджера (пишем и в Contact.notes, и в Customer.notes)"
+      #   }
+      # }
+      #
+      # @return [void]
       def create
         authorize Customer
-
         return render_forbidden(message: "Нет агентства по умолчанию") unless Current.agency
 
         cp = customer_params
@@ -49,7 +78,7 @@ module Api
           )
         end
 
-        normalized = PhoneNormalizer.normalize(phone)
+        normalized = ::Shared::PhoneNormalizer.normalize(phone)
         if normalized.blank?
           return render_error(
             key: "customers.phone_invalid",
@@ -59,48 +88,53 @@ module Api
           )
         end
 
+        customer = nil
+
         ActiveRecord::Base.transaction do
-          # 1) Person по телефону
-          person = Person.find_or_create_by!(normalized_phone: normalized)
+          # 1) создаём/находим Person/Contact/Customer через сервис
+          customer = Customers::CustomerFinderOrCreatorService.new(
+            phone: normalized,
+            attributes: {
+              first_name:   cp[:first_name],
+              last_name:    cp[:last_name],
+              middle_name:  cp[:middle_name],
+              email:        cp[:email],
+              extra_phones: cp[:extra_phones],
+              notes:        cp[:notes],        # попадёт в Contact.notes
+              service_type: cp[:service_type],
+              user_id:      cp[:user_id]
+            },
+            agency: Current.agency
+          ).call
 
-          # 2) Contact в рамках агентства
-          contact = Contact.find_or_initialize_by(agency_id: Current.agency.id, person_id: person.id)
-          contact.first_name  = cp[:first_name].presence || contact.first_name || "—"
-          contact.last_name   = cp.key?(:last_name)   ? cp[:last_name]   : contact.last_name
-          contact.middle_name = cp.key?(:middle_name) ? cp[:middle_name] : contact.middle_name
-          contact.email       = cp.key?(:email)       ? cp[:email]       : contact.email
-          if cp[:extra_phones].present?
-            contact.extra_phones = Array(cp[:extra_phones]).map { |p| PhoneNormalizer.normalize(p) }.reject(&:blank?)
+          # 2) при необходимости — сохраним заметку ещё и в самом Customer
+          if cp[:notes].present?
+            customer.update!(notes: cp[:notes])
           end
-          contact.save!
 
-          # 3) Customer
-          @customer = Customer.new(
-            agency_id:    Current.agency.id,
-            user_id:      cp[:user_id],
-            contact_id:   contact.id,
-            service_type: cp[:service_type],
-            notes:        cp[:notes],
-            is_active:    true
-          )
-          authorize @customer
-
-          if @customer.save
-            render json: @customer, serializer: CustomerSerializer, status: :created
-          else
-            render_validation_errors(@customer)
-          end
+          authorize customer
         end
+
+        render json: customer, serializer: CustomerSerializer, status: :created
       rescue ActiveRecord::RecordInvalid => e
         render_validation_errors(e.record)
+      rescue ArgumentError => e
+        render_error(
+          key: "customers.invalid_arguments",
+          message: e.message,
+          status: :unprocessable_entity,
+          code: 422
+        )
       end
 
       # PATCH /api/v1/customers/:id
       #
-      # Обновление:
-      # - если пришёл phone — обновляем person.normalized_phone (учитываем уникальность);
-      # - если пришли ФИО/email/extra_phones — правим contact;
-      # - прочие поля — в Customer.
+      # Обновление смешанное:
+      # - phone → @customer.person.normalized_phone (с учётом уникальности)
+      # - first/last/middle/email/extra_phones → @customer.contact
+      # - service_type/user_id/notes → @customer
+      #
+      # @return [void]
       def update
         authorize @customer
         cp = customer_params
@@ -109,7 +143,7 @@ module Api
         ActiveRecord::Base.transaction do
           # Обновление телефона в Person
           if cp[:phone].present?
-            pn = PhoneNormalizer.normalize(cp[:phone])
+            pn = ::Shared::PhoneNormalizer.normalize(cp[:phone])
             if pn.blank?
               return render_error(
                 key: "customers.phone_invalid",
@@ -130,13 +164,15 @@ module Api
             contact.middle_name = cp[:middle_name] if cp.key?(:middle_name)
             contact.email       = cp[:email]       if cp.key?(:email)
             if cp.key?(:extra_phones)
-              contact.extra_phones = Array(cp[:extra_phones]).map { |p| PhoneNormalizer.normalize(p) }.reject(&:blank?)
+              contact.extra_phones = Array(cp[:extra_phones])
+                                       .map { |p| ::Shared::PhoneNormalizer.normalize(p) }
+                                       .reject(&:blank?)
             end
             contact.save!
             updated = true
           end
 
-          # Обновление полей самого Customer
+          # Обновление полей Customer
           customer_updatable = {}
           customer_updatable[:service_type] = cp[:service_type] if cp.key?(:service_type)
           customer_updatable[:user_id]      = cp[:user_id]      if cp.key?(:user_id)
@@ -160,7 +196,6 @@ module Api
           )
         end
       rescue ActiveRecord::RecordInvalid => e
-        # В т.ч. конфликт уникальности телефона в people
         render_validation_errors(e.record)
       rescue ActiveRecord::RecordNotUnique
         render_error(
@@ -172,6 +207,10 @@ module Api
       end
 
       # DELETE /api/v1/customers/:id
+      #
+      # Мягкое удаление (is_active: false).
+      #
+      # @return [void]
       def destroy
         authorize @customer
 
@@ -197,6 +236,9 @@ module Api
 
       private
 
+      # Находит клиента в пределах текущего агентства.
+      #
+      # @return [void]
       def set_customer
         @customer = Customer
                       .where(agency_id: Current.agency.id)
@@ -206,21 +248,24 @@ module Api
       end
 
       # Разрешённые параметры.
-      # Обрати внимание:
-      # - :phone теперь используется для Person
-      # - first/last/middle/email/extra_phones — для Contact
-      # - остальные поля — для Customer
+      #
+      # Внимание:
+      # - :phone теперь относится к Person (normalized_phone)
+      # - first/last/middle/email/extra_phones — к Contact
+      # - service_type/user_id/notes — к Customer
+      #
+      # @return [ActionController::Parameters]
       def customer_params
         params.require(:customer).permit(
           :phone,        # Person.normalized_phone
-          :email,        # Contact.email (агентский email)
+          :email,        # Contact.email
           :first_name,   # Contact.first_name
           :last_name,    # Contact.last_name
           :middle_name,  # Contact.middle_name
           :service_type, # Customer.service_type
-          :user_id,      # Customer.user_id (если привязан к учётке)
-          :notes,        # Customer.notes
-          extra_phones:  [] # Contact.extra_phones (массив строк)
+          :user_id,      # Customer.user_id
+          :notes,        # Customer.notes (+ дублируем в Contact.notes при создании)
+          extra_phones:  [] # Contact.extra_phones
         )
       end
     end

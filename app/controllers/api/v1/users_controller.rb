@@ -73,7 +73,7 @@ module Api
           )
         end
 
-        normalized_phone = PhoneNormalizer.normalize(phone)
+        normalized_phone = ::Shared::PhoneNormalizer.normalize(phone)
         if normalized_phone.blank?
           return render_error(
             key: "users.phone_invalid",
@@ -157,7 +157,7 @@ module Api
         ActiveRecord::Base.transaction do
           # Если прилетел телефон — правим его в Person
           if attrs[:phone].present?
-            pn = PhoneNormalizer.normalize(attrs[:phone])
+            pn = ::Shared::PhoneNormalizer.normalize(attrs[:phone])
             if pn.blank?
               return render_error(
                 key: "users.phone_invalid",

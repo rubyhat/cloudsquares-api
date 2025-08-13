@@ -25,23 +25,30 @@ module Api
 
       private
 
+
       def set_current_agency
         return unless current_user
 
+        # 1) Сотрудники: берём дефолтное агентство из UserAgency
         agency = current_user&.user_agencies&.find_by(is_default: true)&.agency
         if agency.present?
           @current_agency = agency
-          Current.agency = agency
-        # TODO: если раскомментировать код, то не создается агентство, пофиксить
-        # else
-        #   render_error(
-        #     key: "auth.no_agency",
-        #     message: "Пользователь не привязан ни к одному агентству",
-        #     status: :forbidden,
-        #     code: 403
-        #   )
+          Current.agency  = agency
+          return
+        end
+
+        # 2) B2C: если в access-токене есть agency_id — используем его как контекст
+        token   = request.headers["Authorization"]&.split&.last
+        payload = Auth::JwtService.decode_and_verify(token)
+        if payload && payload["agency_id"].present?
+          a = Agency.find_by(id: payload["agency_id"])
+          if a
+            @current_agency = a
+            Current.agency  = a
+          end
         end
       end
+
 
       def current_agency
         @current_agency

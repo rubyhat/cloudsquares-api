@@ -1,82 +1,146 @@
 # frozen_string_literal: true
 
 module Customers
-  # Сервис поиска или создания клиента по номеру телефона
+  # Сервис поиска или создания клиента агентства по телефону.
   #
-  # Если найден существующий Customer по телефону в рамках агентства — возвращает его.
-  # Иначе создаёт нового Customer с заданными параметрами.
+  # Алгоритм (idempotent):
+  # 1) Нормализуем phone -> Shared::PhoneNormalizer.
+  # 2) upsert Person(normalized_phone).
+  # 3) upsert Contact(agency_id, person_id) — заполняем ФИО/e-mail/extra_phones/notes.
+  # 4) find_or_create_by Customer(agency_id, contact_id) — задаём service_type, user_id, is_active.
   #
-  # @param [String] phone — номер телефона (нормализованный)
-  # @param [Hash]   attributes — атрибуты для создания или дополнения (имя, услуга, и т.п.)
+  # Возвращает Customer; связанные объекты доступны как:
+  #   customer.contact
+  #   customer.contact.person
   #
-  # @return [Customer] найденный или созданный клиент
+  # Входные attributes поддерживают:
+  #   :first_name, :last_name, :middle_name, :email, :extra_phones, :notes,
+  #   :service_type (строка/символ из Customer.service_types), :user_id
+  #
+  # Ошибки:
+  # - ArgumentError при пустом/некорректном телефоне или agency=nil.
+  # - ActiveRecord::RecordInvalid / RecordNotUnique в случае валидаций/гоночных условий.
   class CustomerFinderOrCreatorService
-    attr_reader :phone, :attributes, :agency
+    # @return [String] нормализованный телефон
+    attr_reader :phone
+    # @return [Hash] атрибуты для Contact/Customer
+    attr_reader :attributes
+    # @return [Agency]
+    attr_reader :agency
 
+    # @param phone [String] телефон в любом формате
+    # @param attributes [Hash] произвольные атрибуты (см. описание выше)
+    # @param agency [Agency] агентство, в контексте которого создаём Contact/Customer
     def initialize(phone:, attributes:, agency:)
-      @phone = normalize_phone(phone)
-      @attributes = attributes.deep_symbolize_keys
-      @agency = agency
+      normalized = ::Shared::PhoneNormalizer.normalize(phone)
+      raise ArgumentError, "Invalid phone" if normalized.blank?
+      raise ArgumentError, "Agency required" if agency.nil?
+
+      @phone      = normalized
+      @attributes = (attributes || {}).deep_symbolize_keys
+      @agency     = agency
     end
 
     # Выполняет поиск или создание клиента
     #
     # @return [Customer]
     def call
-      customer = find_existing_customer
-
-      if customer.present?
-        update_known_names(customer)
-        update_known_phones(customer)
-        customer
-      else
-        create_customer
+      ActiveRecord::Base.transaction do
+        person  = ensure_person!
+        contact = ensure_contact!(person)
+        ensure_customer!(contact)
       end
     end
 
     private
 
-    # Находим клиента по совпадающему номеру телефона в рамках агентства
-    def find_existing_customer
-      agency.customers.with_phone(phone).first
+    # Находит или создаёт Person по normalized_phone.
+    #
+    # @return [Person]
+    def ensure_person!
+      Person.find_or_create_by!(normalized_phone: phone)
     end
 
-    def update_known_names(customer)
-      full_name = full_name_from_attributes
-      return if full_name.blank? || customer.names.include?(full_name)
+    # Находит или создаёт Contact внутри агентства для заданной Person.
+    # Обновляет ФИО, email, extra_phones, notes при наличии в attributes.
+    #
+    # @param person [Person]
+    # @return [Contact]
+    def ensure_contact!(person)
+      contact = Contact.find_or_initialize_by(agency_id: agency.id, person_id: person.id)
 
-      customer.names << full_name
+      # ФИО: допускаем частичное заполнение; first_name ставим "—" если вообще пусто.
+      if attributes.key?(:first_name)
+        contact.first_name = presence_or(contact.first_name, attributes[:first_name], fallback: "—")
+      else
+        contact.first_name ||= "—"
+      end
+      contact.last_name   = attributes[:last_name]   if attributes.key?(:last_name)
+      contact.middle_name = attributes[:middle_name] if attributes.key?(:middle_name)
+
+      # E-mail
+      contact.email = attributes[:email] if attributes.key?(:email)
+
+      # Дополнительные телефоны: нормализуем, мержим со старыми, удаляем пустые/дубли.
+      if attributes.key?(:extra_phones)
+        incoming = Array(attributes[:extra_phones])
+                     .map { |p| ::Shared::PhoneNormalizer.normalize(p) }
+                     .compact
+        current  = Array(contact.extra_phones).compact
+        contact.extra_phones = (current + incoming).uniq
+      end
+
+      # Заметки
+      contact.notes = attributes[:notes] if attributes.key?(:notes)
+
+      # Флаг не удалён
+      contact.is_deleted = false if contact.has_attribute?(:is_deleted)
+
+      contact.save!
+      contact
+    end
+
+    # Находит существующего или создаёт нового Customer для данного Contact в агентстве.
+    # Устанавливает service_type (по умолчанию :buy) и user_id (если передан).
+    #
+    # @param contact [Contact]
+    # @return [Customer]
+    def ensure_customer!(contact)
+      customer = Customer.find_or_initialize_by(agency_id: agency.id, contact_id: contact.id)
+
+      # service_type — валидируем по enum
+      if attributes.key?(:service_type)
+        st = attributes[:service_type].to_s
+        if Customer.service_types.key?(st)
+          customer.service_type = st
+        end
+      else
+        # разумный дефолт для входящих лидов с телефона
+        customer.service_type ||= :buy
+      end
+
+      # user_id (если лид пришёл от авторизованного пользователя)
+      customer.user_id = attributes[:user_id] if attributes.key?(:user_id)
+
+      # Активируем запись
+      customer.is_active = true if customer.has_attribute?(:is_active)
+
       customer.save!
+      customer
     end
 
-    def update_known_phones(customer)
-      return if customer.phones.include?(phone)
-
-      customer.phones << phone
-      customer.save!
-    end
-
-    def create_customer
-      full_name = full_name_from_attributes
-
-      agency.customers.create!(
-        first_name: attributes[:first_name],
-        last_name: attributes[:last_name],
-        middle_name: attributes[:middle_name],
-        service_type: attributes[:service_type] || :other,
-        phones: [phone],
-        names: full_name.present? ? [full_name] : [],
-        user_id: attributes[:user_id],
-        property_ids: attributes[:property_ids] || []
-      )
-    end
-
-    def full_name_from_attributes
-      [attributes[:last_name], attributes[:first_name], attributes[:middle_name]].compact.join(" ").strip
-    end
-
-    def normalize_phone(value)
-      value.to_s.gsub(/\D/, "")
+    # Возвращает первый непустой аргумент, иначе fallback.
+    #
+    # @param current [String, nil]
+    # @param incoming [String, nil]
+    # @param fallback [String]
+    # @return [String]
+    def presence_or(current, incoming, fallback:)
+      inc = incoming.to_s.strip
+      return inc unless inc.empty?
+      cur = current.to_s.strip
+      return cur unless cur.empty?
+      fallback
     end
   end
 end

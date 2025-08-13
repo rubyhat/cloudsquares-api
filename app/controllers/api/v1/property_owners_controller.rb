@@ -96,7 +96,7 @@ module Api
           )
         end
 
-        normalized = PhoneNormalizer.normalize(phone)
+        normalized = ::Shared::PhoneNormalizer.normalize(phone)
         if normalized.blank?
           return render_error(
             key: "property_owners.phone_invalid",
@@ -160,7 +160,7 @@ module Api
         ActiveRecord::Base.transaction do
           # Обновление телефона
           if cp[:phone].present?
-            pn = PhoneNormalizer.normalize(cp[:phone])
+            pn = ::Shared::PhoneNormalizer.normalize(cp[:phone])
             if pn.blank?
               return render_error(
                 key: "property_owners.phone_invalid",

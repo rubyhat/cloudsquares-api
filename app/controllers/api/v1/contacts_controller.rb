@@ -37,7 +37,7 @@ module Api
 
         # Точный поиск по телефону (нормализуем)
         if params[:phone].present?
-          normalized = PhoneNormalizer.normalize(params[:phone].to_s)
+          normalized = ::Shared::PhoneNormalizer.normalize(params[:phone].to_s)
           scope = scope.where(people: { normalized_phone: normalized }) if normalized.present?
         end
 
@@ -108,7 +108,7 @@ module Api
           )
         end
 
-        normalized = PhoneNormalizer.normalize(phone)
+        normalized = ::Shared::PhoneNormalizer.normalize(phone)
         if normalized.blank?
           return render_error(
             key: "contacts.phone_invalid",
@@ -129,7 +129,7 @@ module Api
           contact.middle_name = cp[:middle_name] if cp.key?(:middle_name)
           contact.email       = cp[:email]       if cp.key?(:email)
           if cp.key?(:extra_phones)
-            contact.extra_phones = Array(cp[:extra_phones]).map { |p| PhoneNormalizer.normalize(p) }.reject(&:blank?)
+            contact.extra_phones = Array(cp[:extra_phones]).map { |p| ::Shared::PhoneNormalizer.normalize(p) }.reject(&:blank?)
           end
           contact.notes = cp[:notes] if cp.key?(:notes)
           contact.is_deleted = false if contact.has_attribute?(:is_deleted)
@@ -166,7 +166,7 @@ module Api
         ActiveRecord::Base.transaction do
           # Обновление телефона (Person)
           if cp[:phone].present?
-            pn = PhoneNormalizer.normalize(cp[:phone])
+            pn = ::Shared::PhoneNormalizer.normalize(cp[:phone])
             if pn.blank?
               return render_error(
                 key: "contacts.phone_invalid",
@@ -187,7 +187,7 @@ module Api
           updatable[:email]       = cp[:email]              if cp.key?(:email)
           updatable[:notes]       = cp[:notes]              if cp.key?(:notes)
           if cp.key?(:extra_phones)
-            updatable[:extra_phones] = Array(cp[:extra_phones]).map { |p| PhoneNormalizer.normalize(p) }.reject(&:blank?)
+            updatable[:extra_phones] = Array(cp[:extra_phones]).map { |p| ::Shared::PhoneNormalizer.normalize(p) }.reject(&:blank?)
           end
 
           if updatable.any?

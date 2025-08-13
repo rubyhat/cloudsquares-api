@@ -1,16 +1,13 @@
 # frozen_string_literal: true
 
-# Контроллер заявок на покупку недвижимости.
-# Переведён на Person/Contact:
-# - В create выполняем upsert Person по телефону, затем Contact внутри агентства,
-#   далее создаём/находим Customer для этого Contact и сохраним ссылку в заявке.
-# - В update меняем только статус/response_message (как и прежде).
-#
-# Безопасность:
-# - index/show ограничены текущим агентством; "user" видит только свои заявки.
-# - set_request использует includes для избежания N+1.
 module Api
   module V1
+    # Контроллер заявок на покупку недвижимости.
+    #
+    # Создание заявки теперь использует Customers::CustomerFinderOrCreatorService:
+    # - определяем телефон (из current_user.person или из params с нормализацией);
+    # - upsert Person/Contact/Customer в контексте агентства объекта;
+    # - в заявку пишем :contact и :customer (а не «сырые» first_name/phone).
     class PropertyBuyRequestsController < BaseController
       before_action :authenticate_user!, except: [:create]
       before_action :set_request, only: %i[show destroy update]
@@ -19,7 +16,9 @@ module Api
       # GET /api/v1/property_buy_requests?property_id=...
       #
       # Возвращает список заявок текущего агентства.
-      # Если текущий пользователь имеет роль "user" (B2C), ему показываем только его заявки.
+      # Если пользователь — B2C (:user), ему показываем только его заявки.
+      #
+      # @return [void]
       def index
         authorize PropertyBuyRequest
 
@@ -44,10 +43,10 @@ module Api
       # Тело запроса:
       # {
       #   "property_buy_request": {
-      #     "property_id": "UUID",           # обязательно
-      #     "first_name": "Иван",            # -> Contact.first_name (если гость)
-      #     "last_name": "Иванов",           # -> Contact.last_name (если гость)
-      #     "phone": "77001234567",          # -> Person.normalized_phone (если гость)
+      #     "property_id": "UUID",
+      #     "first_name": "Иван",   # опционально, если гость
+      #     "last_name": "Иванов",  # опционально, если гость
+      #     "phone": "77001234567", # опционально, если гость
       #     "comment": "Текст комментария"
       #   }
       # }
@@ -55,33 +54,25 @@ module Api
       # Если пользователь авторизован:
       # - user_id := current_user.id
       # - телефон берём из current_user.person.normalized_phone
-      # - имя берём из Contact пользователя в этом агентстве (если есть), иначе используем переданные first_name/last_name
+      # - имя пробуем взять из его Contact в этом агентстве.
+      #
+      # @return [void]
       def create
-        # Разбираем вход
-        attrs = buy_request_params
-        property = Property.find_by(id: attrs[:property_id])
+        attrs     = buy_request_params
+        property  = Property.find_by(id: attrs[:property_id])
 
         unless property
           return render_not_found("Объект недвижимости не найден", "properties.not_found")
         end
 
         agency = property.agency
-        # Базовый объект заявки: только связанные ID + комментарий
-        request = PropertyBuyRequest.new(
-          property_id: property.id,
-          agency_id:   agency.id,
-          comment:     attrs[:comment]
-        )
 
-        # Пользователь и исходные ФИО/телефон
-        current_person_phone = current_user&.person&.normalized_phone
-        input_phone          = attrs[:phone].to_s
-
+        # Определяем телефон
         phone_for_person =
           if current_user.present?
-            current_person_phone
+            current_user.person&.normalized_phone
           else
-            PhoneNormalizer.normalize(input_phone)
+            ::Shared::PhoneNormalizer.normalize(attrs[:phone].to_s)
           end
 
         if phone_for_person.blank?
@@ -93,41 +84,34 @@ module Api
           )
         end
 
-        # Попытаемся найти контакт пользователя в этом агентстве (если он авторизован)
-        contact_first_name = attrs[:first_name]
-        contact_last_name  = attrs[:last_name]
+        # Собираем атрибуты для клиента (service_type: :buy)
+        # Если пользователь авторизован и уже имеет Contact в этом агентстве,
+        # имя подтянется сериализатором; здесь же передаём first/last на случай гостя.
+        customer = nil
+        contact  = nil
 
         ActiveRecord::Base.transaction do
-          # 1) Person по телефону
-          person = Person.find_or_create_by!(normalized_phone: phone_for_person)
+          customer = Customers::CustomerFinderOrCreatorService.new(
+            phone: phone_for_person,
+            attributes: {
+              first_name:  attrs[:first_name],
+              last_name:   attrs[:last_name],
+              service_type: :buy,
+              user_id:     current_user&.id
+            },
+            agency: agency
+          ).call
 
-          # 2) Contact внутри агентства
-          contact = Contact.find_or_initialize_by(agency_id: agency.id, person_id: person.id)
+          contact = customer.contact
 
-          # Если пользователь авторизован — пробуем взять имя из его агентского контакта
-          if current_user
-            existing_user_contact = Contact.find_by(agency_id: agency.id, person_id: current_user.person_id)
-            if existing_user_contact
-              contact_first_name ||= existing_user_contact.first_name
-              contact_last_name  ||= existing_user_contact.last_name
-            end
-          end
-
-          contact.first_name = contact_first_name.presence || contact.first_name || "—"
-          contact.last_name  = contact_last_name   if contact_last_name.present? || contact.last_name.blank?
-          contact.save!
-
-          # 3) Customer для этого контакта в агентстве (service_type: buy)
-          customer = Customer.find_or_create_by!(agency_id: agency.id, contact_id: contact.id) do |c|
-            c.service_type = :buy
-            c.user_id      = current_user&.id
-            c.is_active    = true
-          end
-
-          # 4) Завершаем заявку
-          request.user     = current_user if current_user
-          request.contact  = contact
-          request.customer = customer
+          request = PropertyBuyRequest.new(
+            property_id: property.id,
+            agency_id:   agency.id,
+            user_id:     current_user&.id,
+            contact_id:  contact.id,
+            customer_id: customer.id,
+            comment:     attrs[:comment]
+          )
 
           authorize request
 
@@ -142,6 +126,8 @@ module Api
       end
 
       # GET /api/v1/property_buy_requests/:id
+      #
+      # @return [void]
       def show
         authorize @request
 
@@ -160,6 +146,8 @@ module Api
       # PATCH /api/v1/property_buy_requests/:id
       #
       # Меняем только статус и/или ответ менеджера.
+      #
+      # @return [void]
       def update
         authorize @request
 
@@ -171,6 +159,10 @@ module Api
       end
 
       # DELETE /api/v1/property_buy_requests/:id
+      #
+      # Мягкое удаление.
+      #
+      # @return [void]
       def destroy
         authorize @request
 
@@ -196,6 +188,9 @@ module Api
 
       private
 
+      # Находит заявку в пределах текущего агентства.
+      #
+      # @return [void]
       def set_request
         @request = PropertyBuyRequest
                      .where(agency_id: Current.agency.id)
@@ -205,9 +200,12 @@ module Api
         render_not_found("Заявка не найдена", "property_buy_requests.not_found") unless @request
       end
 
-      # Разрешённые параметры для создания заявки.
-      # ВНИМАНИЕ: first_name / last_name / phone — НЕ поля модели заявки,
-      # они используются для upsert Person/Contact и не присваиваются в PropertyBuyRequest напрямую.
+      # Разрешённые параметры создания заявки.
+      #
+      # ВАЖНО: first_name / last_name / phone — это не поля заявки,
+      # а вспомогательные данные для создания Person/Contact/Customer.
+      #
+      # @return [ActionController::Parameters]
       def buy_request_params
         params.require(:property_buy_request).permit(
           :property_id,
@@ -218,7 +216,9 @@ module Api
         )
       end
 
-      # Разрешённые параметры для обновления заявки.
+      # Разрешённые параметры обновления заявки.
+      #
+      # @return [ActionController::Parameters]
       def update_params
         params.require(:property_buy_request).permit(:status, :response_message)
       end
