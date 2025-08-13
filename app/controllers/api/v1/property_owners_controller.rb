@@ -1,16 +1,5 @@
 # frozen_string_literal: true
 
-# Контроллер владельцев недвижимости.
-# Поддерживает два сценария:
-# 1) GET /api/v1/property_owners
-#    — список всех владельцев по текущему агентству (через Current.agency), с пагинацией и сортировкой.
-# 2) GET /api/v1/properties/:property_id/owners
-#    — список владельцев конкретного объекта, с пагинацией и сортировкой.
-#
-# Сортировка (одно поле):
-#   ?sort_by=created_at|role|phone & sort_dir=asc|desc
-# По умолчанию: created_at desc (новые сверху).
-#
 module Api
   module V1
     class PropertyOwnersController < BaseController
@@ -29,19 +18,18 @@ module Api
       # - sort_by:  String  — одно из: created_at | role | phone
       # - sort_dir: String  — asc | desc (по умолчанию asc)
       #
-      # Если передан :property_id — фильтруем по конкретному объекту.
-      # Иначе — возвращаем всех владельцев из текущего агентства (через join properties).
       def index
         authorize PropertyOwner
 
         # Базовый скоуп: владельцы в пределах текущего агентства
-        # join на properties, чтобы не утекали данные других агентств
+        # joins — для фильтрации по агентству; includes — для избежания N+1 (адрес/фото)
         scope = PropertyOwner
                   .active
                   .joins(:property)
                   .where(properties: { agency_id: Current.agency.id })
+                  .includes(property: [:property_location, :property_photos])
 
-        # Если пришёл property_id — дополнительно валидируем объект и фильтруем
+        # Если пришёл property_id — сузим выборку до одного объекта
         if params[:property_id].present?
           property = Property.find_by(id: params[:property_id])
           return render_not_found("Объект недвижимости не найден", "properties.not_found") unless property
@@ -134,13 +122,14 @@ module Api
         render_not_found("Объект недвижимости не найден", "properties.not_found")
       end
 
-      # Поиск конкретного владельца внутри объекта
+      # Поиск конкретного владельца внутри объекта + предзагрузка ассоциаций
       def set_owner
-        @owner = @property.property_owners.find_by(id: params[:id])
+        @owner = @property.property_owners
+                          .includes(property: [:property_location, :property_photos])
+                          .find_by(id: params[:id])
         render_not_found("Владелец не найден", "property_owners.not_found") unless @owner
       end
 
-      # Разрешённые параметры для create/update
       def owner_params
         params.require(:property_owner).permit(
           :first_name, :last_name, :middle_name, :phone, :email, :notes, :user_id, :role
