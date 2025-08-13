@@ -1,27 +1,28 @@
 # frozen_string_literal: true
 
-# == Schema Information
+# == Model: Customer
 #
-# Table name: customers
+# Customer — роль контакта в рамках агентства (покупатель/продавец/аренда и т.п.).
+# Ключевая связь теперь идёт через Contact (agency-scoped), а телефон живёт в Person.
 #
-#  id            :uuid             not null, primary key
-#  agency_id     :uuid             not null
-#  user_id       :uuid
-#  first_name    :string
-#  last_name     :string
-#  middle_name   :string
-#  phones        :string           default([]), not null, is an Array
-#  names         :string           default([]), not null, is an Array
-#  service_type  :integer          default("buy"), not null
-#  property_ids  :uuid             default([]), is an Array
-#  notes         :text
-#  is_active     :boolean          default(TRUE), not null
-#  created_at    :datetime         not null
-#  updated_at    :datetime         not null
+# Ассоциации:
+# - belongs_to :agency
+# - belongs_to :user, optional
+# - belongs_to :contact  (ВАЖНО: contact → person → normalized_phone)
 #
-
+# Валидации:
+# - presence: agency_id, contact_id, service_type
+#
+# Скоупы/утилиты:
+# - .active            — только активные клиенты
+# - .with_phone(phone) — поиск по people.normalized_phone через JOIN
+# - #full_name         — ФИО из связанного contact
+#
+# Обратная совместимость:
+# - Старые поля phones/names больше НЕ используются в БД.
+#   Для выдачи в API сериализатор собирает их из contact/person.
 class Customer < ApplicationRecord
-  # Тип услуги, интересующей клиента
+  # Тип запрашиваемой услуги
   enum :service_type, {
     buy: 0,        # Хочет купить
     sell: 1,       # Хочет продать
@@ -33,27 +34,36 @@ class Customer < ApplicationRecord
   # Ассоциации
   belongs_to :agency
   belongs_to :user, optional: true
+  belongs_to :contact
+
+  # Делегации
+  delegate :person, to: :contact
 
   # Валидации
-  validates :phones, presence: true
+  validates :agency_id, presence: true
+  validates :contact_id, presence: true
   validates :service_type, presence: true
 
-  # Скоуп только активных клиентов
+  # Скоупы
   scope :active, -> { where(is_active: true) }
 
-  # Поиск клиента по одному из номеров телефона (массивное поле phones)
+  # Поиск клиента по телефону через person.normalized_phone.
   #
-  # @param [String] phone — номер телефона в любом формате
+  # @param phone [String] телефон в любом формате
   # @return [ActiveRecord::Relation]
-  scope :with_phone, ->(phone) {
-    normalized = phone.to_s.gsub(/\D/, "")
-    where("phones @> ARRAY[?]::varchar[]", normalized)
+  scope :with_phone, lambda { |phone|
+    normalized = if defined?(PhoneNormalizer)
+                   PhoneNormalizer.normalize(phone)
+                 else
+                   phone.to_s.gsub(/\D/, "")
+                 end
+    joins(contact: :person).where(people: { normalized_phone: normalized })
   }
 
-  # Утилита: объединить имя клиента
+  # Полное имя клиента из Contact
   #
-  # @return [String] Полное имя (если есть)
+  # @return [String]
   def full_name
-    [last_name, first_name, middle_name].compact.join(" ")
+    [contact&.last_name, contact&.first_name, contact&.middle_name].compact.join(" ")
   end
 end

@@ -65,6 +65,9 @@ Rails.application.routes.draw do
 
       # Клиенты агентства
       resources :customers, only: %i[index show create update destroy]
+
+      # Контакты (Person → Contact CRUD)
+      resources :contacts, only: %i[index show create update destroy]
     end
   end
 end

@@ -12,6 +12,7 @@
 # Все политики проекта должны наследоваться от ApplicationPolicy.
 
 class ApplicationPolicy
+  include ::RoleHelpers
   attr_reader :user, :record
 
   # Инициализация политики с пользователем и ресурсом
