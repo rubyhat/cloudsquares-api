@@ -77,11 +77,12 @@ db-down:
 
 ## 🌱 Заполнить тестовыми данными из seeds.rb (db:seed)
 db-seed:
-	docker compose --env-file $(ENV_FILE_DEV) exec web bin/rails db:seed
+	docker compose --env-file $(ENV_FILE_DEV) exec web bin/rails db:seed --trace
 
 ## 💣 Полный сброс базы данных и повторный запуск миграций + seed
 db-reset:
 	docker compose --env-file $(ENV_FILE_DEV) exec web bin/rails db:reset
+
 
 ## 🧬 Проверить статус миграций (db:migrate:status)
 db-status:

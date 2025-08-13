@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_19_184006) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_13_140042) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -67,6 +67,24 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_19_184006) do
     t.index ["agency_id"], name: "index_agency_settings_on_agency_id", unique: true
   end
 
+  create_table "contacts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "agency_id", null: false
+    t.uuid "person_id", null: false
+    t.string "first_name", null: false
+    t.string "last_name"
+    t.string "middle_name"
+    t.string "email"
+    t.string "extra_phones", default: [], null: false, array: true
+    t.text "notes"
+    t.boolean "is_deleted", default: false, null: false
+    t.datetime "deleted_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agency_id", "person_id"], name: "index_contacts_on_agency_and_person", unique: true
+    t.index ["agency_id"], name: "index_contacts_on_agency_id"
+    t.index ["person_id"], name: "index_contacts_on_person_id"
+  end
+
   create_table "countries", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "title", null: false
     t.string "code", null: false
@@ -85,19 +103,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_19_184006) do
   create_table "customers", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "agency_id", null: false
     t.uuid "user_id"
-    t.string "first_name"
-    t.string "last_name"
-    t.string "middle_name"
-    t.string "phones", default: [], null: false, array: true
-    t.string "names", default: [], null: false, array: true
     t.integer "service_type", default: 0, null: false
-    t.uuid "property_ids", default: [], array: true
     t.text "notes"
     t.boolean "is_active", default: true, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.uuid "contact_id", null: false
     t.index ["agency_id"], name: "index_customers_on_agency_id"
-    t.index ["phones"], name: "index_customers_on_phones", using: :gin
+    t.index ["contact_id"], name: "index_customers_on_contact_id"
     t.index ["user_id"], name: "index_customers_on_user_id"
   end
 
@@ -126,6 +139,15 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_19_184006) do
     t.index ["translatable_id", "translatable_type", "locale", "key"], name: "index_mobility_text_translations_on_keys", unique: true
   end
 
+  create_table "people", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "normalized_phone", null: false
+    t.boolean "is_active", default: true, null: false
+    t.datetime "blocked_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["normalized_phone"], name: "index_people_on_normalized_phone", unique: true
+  end
+
   create_table "properties", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "title", null: false
     t.text "description"
@@ -150,9 +172,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_19_184006) do
     t.uuid "property_id", null: false
     t.uuid "agency_id", null: false
     t.uuid "user_id"
-    t.string "first_name", null: false
-    t.string "last_name"
-    t.string "phone", null: false
     t.text "comment"
     t.text "response_message"
     t.integer "status", default: 0, null: false
@@ -161,8 +180,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_19_184006) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.uuid "customer_id"
+    t.uuid "contact_id", null: false
     t.index ["agency_id", "status"], name: "index_property_buy_requests_on_agency_id_and_status"
     t.index ["agency_id"], name: "index_property_buy_requests_on_agency_id"
+    t.index ["contact_id"], name: "index_property_buy_requests_on_contact_id"
     t.index ["customer_id"], name: "index_property_buy_requests_on_customer_id"
     t.index ["property_id", "is_deleted"], name: "index_property_buy_requests_on_property_id_and_is_deleted"
     t.index ["property_id"], name: "index_property_buy_requests_on_property_id"
@@ -267,17 +288,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_19_184006) do
   create_table "property_owners", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "property_id", null: false
     t.uuid "user_id"
-    t.string "first_name", null: false
-    t.string "last_name"
-    t.string "middle_name"
-    t.string "phone", null: false
-    t.string "email"
     t.text "notes"
     t.integer "role", default: 0, null: false
     t.boolean "is_deleted", default: false, null: false
     t.datetime "deleted_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.uuid "contact_id", null: false
+    t.index ["contact_id"], name: "index_property_owners_on_contact_id"
     t.index ["property_id", "is_deleted"], name: "index_property_owners_on_property_id_and_is_deleted"
     t.index ["property_id"], name: "index_property_owners_on_property_id"
     t.index ["user_id"], name: "index_property_owners_on_user_id"
@@ -314,12 +332,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_19_184006) do
   end
 
   create_table "users", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.string "phone", null: false
     t.string "email", null: false
     t.string "password_digest", null: false
-    t.string "first_name", null: false
-    t.string "last_name"
-    t.string "middle_name"
     t.integer "role", default: 5, null: false
     t.string "country_code", default: "RU", null: false
     t.boolean "is_active", default: true, null: false
@@ -327,16 +341,21 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_19_184006) do
     t.datetime "deleted_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.uuid "person_id", null: false
     t.index ["email"], name: "index_users_on_email", unique: true
-    t.index ["phone"], name: "index_users_on_phone", unique: true
+    t.index ["person_id"], name: "index_users_on_person_id", unique: true
   end
 
   add_foreign_key "agencies", "agency_plans"
   add_foreign_key "agencies", "users", column: "created_by_id"
   add_foreign_key "agency_settings", "agencies"
+  add_foreign_key "contacts", "agencies"
+  add_foreign_key "contacts", "people"
   add_foreign_key "customers", "agencies"
+  add_foreign_key "customers", "contacts"
   add_foreign_key "customers", "users"
   add_foreign_key "property_buy_requests", "agencies"
+  add_foreign_key "property_buy_requests", "contacts"
   add_foreign_key "property_buy_requests", "customers"
   add_foreign_key "property_buy_requests", "properties"
   add_foreign_key "property_buy_requests", "users"
@@ -351,9 +370,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_19_184006) do
   add_foreign_key "property_comments", "properties"
   add_foreign_key "property_comments", "users"
   add_foreign_key "property_locations", "properties"
+  add_foreign_key "property_owners", "contacts"
   add_foreign_key "property_owners", "properties"
   add_foreign_key "property_owners", "users"
   add_foreign_key "property_photos", "properties"
   add_foreign_key "user_agencies", "agencies"
   add_foreign_key "user_agencies", "users"
+  add_foreign_key "users", "people"
 end
