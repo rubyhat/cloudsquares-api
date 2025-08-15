@@ -1,4 +1,3 @@
-# config/routes.rb
 Rails.application.routes.draw do
   if Rails.env.development? || Rails.env.test?
     mount Rswag::Ui::Engine => "/api-docs"
@@ -12,13 +11,15 @@ Rails.application.routes.draw do
       post   "photo_jobs",         to: "photo_jobs#create"
       delete "photo_jobs/delete",  to: "photo_jobs#delete"
     end
+
     namespace :v1 do
       # Аутентификация
-      post "auth/login",           to: "auth#login"
-      post "auth/refresh",         to: "auth#refresh"
-      post "auth/logout",          to: "auth#logout"
-      post "auth/register-agent",  to: "auth#register_agent_admin"
-      post "auth/register-user",   to: "auth#register_user"
+      post "auth/login",                        to: "auth#login"
+      post "auth/refresh",                      to: "auth#refresh"
+      post "auth/logout",                       to: "auth#logout"
+      post "auth/register-agent",               to: "auth#register_agent_admin"        # DEPRECATED
+      post "auth/register-user",                to: "auth#register_user"
+      post "auth/register-agent-with-agency",   to: "auth#register_agent_with_agency"  # NEW
 
       # Текущий пользователь
       get :me, to: "users#me"
@@ -28,7 +29,7 @@ Rails.application.routes.draw do
       resources :agencies, only: %i[index show create update destroy]
       patch "agencies/:id/change_plan", to: "agencies#change_plan"
 
-      #  Настройки агентства
+      # Настройки агентства
       get "my_agency/setting", to: "agency_settings#my_agency"
       resources :agency_settings, only: %i[show update]
 
@@ -51,10 +52,10 @@ Rails.application.routes.draw do
       # Объекты недвижимости
       resources :properties
 
-      # Комментарии, данные о владельце к объектам недвижимости
+      # Комментарии/владельцы к объектам недвижимости
       resources :properties, only: [] do
         resources :comments, controller: "property_comments", only: %i[index create update destroy]
-        resources :owners, controller: "property_owners", only: %i[index show create update destroy]
+        resources :owners,   controller: "property_owners",   only: %i[index show create update destroy]
       end
 
       # Глобальный список владельцев по агентству:
@@ -65,9 +66,6 @@ Rails.application.routes.draw do
 
       # Клиенты агентства
       resources :customers, only: %i[index show create update destroy]
-
-      # Контакты (Person → Contact CRUD)
-      resources :contacts, only: %i[index show create update destroy]
     end
   end
 end

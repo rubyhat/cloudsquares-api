@@ -6,9 +6,13 @@ module Api
     #
     # Изменения:
     # - B2C регистрация ТОЛЬКО в контексте агентства: нужен agency_id ИЛИ property_id.
-    # - При регистрации создаём Person, User(:user), Contact(в агентстве), Customer(service_type: :buy).
+    # - При регистрации B2C создаём Person, User(:user), Contact(в агентстве), Customer(service_type: :buy).
     # - JWT кладём agency_id этого контекста.
     # - login поддерживает agency_id/property_id в запросе, чтобы выбрать контекст для токена.
+    #
+    # Новое:
+    # - POST /api/v1/auth/register-agent-with-agency — атомарная регистрация B2B:
+    #   Person -> User(:agent_admin) -> Agency(plan) -> UserAgency(is_default) -> Contact.
     class AuthController < BaseController
       skip_before_action :authenticate_user!
       before_action :authenticate_user!, only: [:logout]
@@ -22,15 +26,10 @@ module Api
       # @param password [String]
       # @param agency_id [UUID, optional]
       # @param property_id [UUID, optional]
-      #
-      # Правила:
-      # - Если передан property_id — agency_id берём из property.agency_id (перекрывает agency_id).
-      # - Если ни agency_id, ни property_id не переданы — в токен пойдёт default_agency (для сотрудников)
-      #   либо nil (для B2C), тогда фронт должен передавать agency_id/host отдельно или выбрать его позже.
       def login
-        raw_phone  = login_params[:phone].to_s.strip
-        password   = login_params[:password]
-        agency_id  = login_params[:agency_id].presence
+        raw_phone   = login_params[:phone].to_s.strip
+        password    = login_params[:password]
+        agency_id   = login_params[:agency_id].presence
         property_id = login_params[:property_id].presence
 
         normalized = ::Shared::PhoneNormalizer.normalize(raw_phone)
@@ -76,7 +75,7 @@ module Api
       # POST /api/v1/auth/refresh
       #
       # Проверяет refresh_token; если валиден — выдаёт новую пару токенов.
-      # Сохраняем прежний агентский контекст (agency_id) из старого токена, если он был.
+      # Можно опционально передать agency_id, чтобы переопределить контекст.
       def refresh
         payload = Auth::JwtService.decode_and_verify(params[:refresh_token])
 
@@ -84,8 +83,6 @@ module Api
           user = User.find_by(id: payload["sub"])
 
           if user && Auth::TokenStorageRedis.valid?(user_id: user.id, iat: payload["iat"])
-            # Сохраняем предыдущий контекст agency_id из старого access токена если фронт захочет его передать
-            # (refresh сам по себе контекста не содержит; можно принять опционально agency_id)
             token_agency_id = params[:agency_id].presence
             tokens = Auth::JwtService.generate_tokens(user, agency_id: token_agency_id)
             Auth::TokenStorageRedis.save(user_id: user.id, iat: tokens[:iat])
@@ -114,9 +111,7 @@ module Api
         token   = request.headers["Authorization"]&.split&.last
         payload = Auth::JwtService.decode(token)
 
-        if payload && payload["sub"]
-          Auth::TokenStorageRedis.clear(user_id: payload["sub"])
-        end
+        Auth::TokenStorageRedis.clear(user_id: payload["sub"]) if payload && payload["sub"].present?
 
         render_success(key: "auth.logout", message: "Вы вышли из системы")
       end
@@ -124,20 +119,7 @@ module Api
       # POST /api/v1/auth/register-user
       #
       # Публичная регистрация B2C-покупателя В КОНТЕКСТЕ АГЕНТСТВА.
-      #
-      # Требуется один из параметров:
-      # - agency_id  — явный выбор агентства;
-      # - property_id — регистрация со страницы объекта (агентство берём из property).
-      #
-      # Также принимает:
-      # - phone, email, password, password_confirmation, country_code
-      # - first_name, last_name, middle_name, extra_phones (для Contact в агентстве)
-      #
-      # Побочные эффекты:
-      # - Создаёт Person (по телефону) и User (роль :user).
-      # - Создаёт/находит Contact (agency_id + person_id) и заполняет ФИО/e-mail/extra_phones.
-      # - Создаёт/находит Customer с service_type: :buy в этом агентстве.
-      # - Выдаёт JWT, куда кладёт этот agency_id.
+      # Требуется agency_id или property_id.
       def register_user
         rp = register_user_params
 
@@ -237,14 +219,98 @@ module Api
         )
       end
 
-      # POST /api/v1/auth/register-agent
+      # POST /api/v1/auth/register-agent-with-agency
       #
-      # Регистрация B2B пользователя (agent_admin); агентство будет создано отдельно.
+      # Новая атомарная регистрация B2B: создаёт User(:agent_admin) + Agency + UserAgency + Contact.
+      # В случае успеха сразу возвращает токены с контекстом созданного агентства.
+      #
+      # Тело запроса:
+      # {
+      #   "user": {
+      #     "phone": "77020000002",
+      #     "email": "b2b@example.com",
+      #     "password": "UserPassword1@",
+      #     "password_confirmation": "UserPassword1@",
+      #     "country_code": "RU",
+      #     "first_name": "Иван",
+      #     "last_name": "Алексеев",
+      #     "middle_name": "Сергеевич"
+      #   },
+      #   "agency": {
+      #     "title": "ИП Алексеев",
+      #     "slug": "ip-alekseev",          // можно не передавать
+      #     "custom_domain": null,           // опционально
+      #     "agency_plan_id": null           // если nil — возьмём дефолтный план
+      #   }
+      # }
+      #
+      # Ответ: { user, agency, access_token, refresh_token }
+      def register_agent_with_agency
+        payload   = register_agent_with_agency_params
+        user_p    = (payload[:user]   || {}).to_h
+        agency_p  = (payload[:agency] || {}).to_h
+
+        # Выполняем регистрацию через сервис
+        user, agency = ::Auth::RegisterAgentWithAgency.new(
+          user_params:   user_p,
+          agency_params: agency_p
+        ).call
+
+        tokens = Auth::JwtService.generate_tokens(user, agency_id: agency.id)
+        Auth::TokenStorageRedis.save(user_id: user.id, iat: tokens[:iat])
+
+        render json: {
+          user:          UserSerializer.new(user, scope: user),
+          agency:        agency.as_json(only: %i[id title slug custom_domain]),
+          access_token:  tokens[:access_token],
+          refresh_token: tokens[:refresh_token]
+        }, status: :created
+      rescue ActiveRecord::RecordInvalid => e
+        # Передаём точные ошибки конкретной модели (User/Agency и т.д.)
+        render_validation_errors(e.record)
+      rescue ActiveRecord::RecordNotFound => e
+        render_not_found(e.message)
+      rescue ActiveRecord::RecordNotUnique
+        render_error(
+          key: "auth.phone_or_slug_taken",
+          message: "Телефон или slug агентства уже заняты",
+          status: :unprocessable_entity,
+          code: 422
+        )
+      end
+
+      # DEPRECATED: POST /api/v1/auth/register-agent
+      # Оставляем временно, но не используем на фронте. Позднее удалить.
       def register_agent_admin
         create_agent_admin
       end
 
       private
+
+      # Разрешённые параметры B2C регистрации
+      def register_user_params
+        params.require(:user).permit(
+          :phone, :email, :password, :password_confirmation, :country_code,
+          :first_name, :last_name, :middle_name,
+          :agency_id, :property_id,
+          extra_phones: []
+        )
+      end
+
+      # Разрешённые параметры логина
+      def login_params
+        params.permit(:phone, :password, :agency_id, :property_id)
+      end
+
+      # Разрешённые параметры для B2B регистрации с агентством (новый эндпоинт)
+      def register_agent_with_agency_params
+        params.permit(
+          user:   %i[phone email password password_confirmation country_code first_name last_name middle_name],
+          agency: %i[title slug custom_domain agency_plan_id]
+        )
+      end
+
+      # ===== Ниже — ВРЕМЕННАЯ обёртка для старого эндпоинта (DEPRECATED) =====
 
       # Вспомогательный метод регистрации агентского админа (без агентства)
       def create_agent_admin
@@ -301,23 +367,6 @@ module Api
           status: :unprocessable_entity,
           code: 422
         )
-      end
-
-      # Разрешённые параметры регистрации
-      #
-      # NB: first_name/last_name/middle_name/extra_phones — пойдут в Contact при B2C-регистрации.
-      def register_user_params
-        params.require(:user).permit(
-          :phone, :email, :password, :password_confirmation, :country_code,
-          :first_name, :last_name, :middle_name,
-          :agency_id, :property_id,
-          extra_phones: []
-        )
-      end
-
-      # Разрешённые параметры логина
-      def login_params
-        params.permit(:phone, :password, :agency_id, :property_id)
       end
     end
   end
