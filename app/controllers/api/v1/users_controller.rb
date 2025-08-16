@@ -11,13 +11,13 @@ module Api
         return render_unauthorized unless user
 
         authorize user, :me?
-        render json: user, status: :ok
+        render json: user, serializer: UserSerializer, current_agency: Current.agency, status: :ok
       end
 
       # GET /api/v1/users
       def index
         users = policy_scope(User)
-        render json: users, status: :ok
+        render json: users, each_serializer: UserSerializer, current_agency: Current.agency, status: :ok
       end
 
       # GET /api/v1/users/:id
@@ -25,7 +25,7 @@ module Api
         return render_user_deleted unless @user.is_active
 
         authorize @user
-        render json: @user, status: :ok
+        render json: @user, serializer: UserSerializer, current_agency: Current.agency, status: :ok
       end
 
       # POST /api/v1/users
@@ -39,7 +39,9 @@ module Api
           return render_forbidden(message: "Создание admin запрещено", key: "users.admin_not_allowed")
         end
 
-        authorize User
+        # Быстрая проверка, может ли текущий юзер создавать новых юзеров с такой ролью
+        authorize User.new(role: attrs[:role])
+
         return render_unauthorized unless current_user
 
         if current_user&.agencies&.empty?
@@ -54,14 +56,14 @@ module Api
         # Должно быть агентство по умолчанию
         return render_forbidden(message: "Нет агентства по умолчанию") unless @current_agency
 
-        if Shared::LimitChecker.exceeded?(:employees, @current_agency)
-          return render_error(
-            key: "users.limit_exceeded",
-            message: "Достигнут лимит сотрудников для агентства",
-            status: :unprocessable_entity,
-            code: 422
-          )
-        end
+        # if Shared::LimitChecker.exceeded?(:employees, @current_agency)
+        #   return render_error(
+        #     key: "users.limit_exceeded",
+        #     message: "Достигнут лимит сотрудников для агентства",
+        #     status: :unprocessable_entity,
+        #     code: 422
+        #   )
+        # end
 
         phone = attrs[:phone].to_s
         if phone.blank?
@@ -175,21 +177,25 @@ module Api
 
           # Если прилетели ФИО — правим/создаём Contact в рамках текущего агентства
           if attrs.slice(:first_name, :last_name, :middle_name).values.any?(&:present?) && @current_agency
-            contact = Contact.find_or_create_by!(agency_id: @current_agency.id, person_id: @user.person_id)
+            contact = Contact.find_or_initialize_by(agency_id: @current_agency.id, person_id: @user.person_id)
+
+            # важно: сначала присваиваем, потом сохраняем
             contact.first_name  = attrs[:first_name].presence || contact.first_name || "—"
             contact.last_name   = attrs[:last_name]   if attrs.key?(:last_name)
             contact.middle_name = attrs[:middle_name] if attrs.key?(:middle_name)
+
             contact.save!
             updated = true
           end
 
+
           # Обновляем собственно User-поля, если пришли
           user_updatable = {}
-          user_updatable[:email] = attrs[:email] if attrs.key?(:email)
-          user_updatable[:role] = attrs[:role] if attrs.key?(:role)
-          user_updatable[:country_code] = attrs[:country_code] if attrs.key?(:country_code)
+          user_updatable[:email]         = attrs[:email]         if attrs.key?(:email)
+          user_updatable[:role]          = attrs[:role]          if attrs.key?(:role)
+          user_updatable[:country_code]  = attrs[:country_code]  if attrs.key?(:country_code)
           if attrs[:password].present?
-            user_updatable[:password] = attrs[:password]
+            user_updatable[:password]              = attrs[:password]
             user_updatable[:password_confirmation] = attrs[:password_confirmation]
           end
 
@@ -202,7 +208,7 @@ module Api
         end
 
         if updated
-          render json: @user, status: :ok
+          render json: @user, serializer: UserSerializer, current_agency: Current.agency, status: :ok
         else
           render_success(
             key: "users.nothing_to_update",
@@ -210,8 +216,10 @@ module Api
             code: 200
           )
         end
+
+        # === ВАЖНО: показываем ошибки того объекта, который упал ===
       rescue ActiveRecord::RecordInvalid => e
-        # В т.ч. при конфликте уникальности телефона в people
+        # Если уникальность телефона у Person сработала через валидации:
         if e.record.is_a?(Person) && e.record.errors.added?(:normalized_phone, :taken)
           return render_error(
             key: "users.phone_already_registered",
@@ -220,15 +228,30 @@ module Api
             code: 422
           )
         end
-        render_validation_errors(@user)
-      rescue ActiveRecord::RecordNotUnique
+
+        # Во всех прочих случаях (Contact, User, Person с другими ошибками)
+        render_validation_errors(e.record)
+
+      rescue ActiveRecord::RecordNotUnique => e
+        # Если уникальность стрельнула на уровне БД (индекс), распознаём по сообщению
+        if e.message =~ /people.*normalized_phone/i
+          return render_error(
+            key: "users.phone_already_registered",
+            message: "Этот номер телефона уже зарегистрирован",
+            status: :unprocessable_entity,
+            code: 422
+          )
+        end
+
+        # Фолбэк: показать общую ошибку
         render_error(
-          key: "users.phone_already_registered",
-          message: "Этот номер телефона уже зарегистрирован",
+          key: "validation.failed",
+          message: "Ошибка валидации",
           status: :unprocessable_entity,
           code: 422
         )
       end
+
 
       # DELETE /api/v1/users/:id
       def destroy

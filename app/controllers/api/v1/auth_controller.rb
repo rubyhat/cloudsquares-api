@@ -203,7 +203,7 @@ module Api
           Auth::TokenStorageRedis.save(user_id: user.id, iat: tokens[:iat])
 
           render json: {
-            user:          UserSerializer.new(user, scope: user),
+            user:          UserSerializer.new(user, scope: user, current_agency: target_agency),
             access_token:  tokens[:access_token],
             refresh_token: tokens[:refresh_token]
           }, status: :created
@@ -261,7 +261,6 @@ module Api
 
         render json: {
           user:          UserSerializer.new(user, scope: user),
-          agency:        agency.as_json(only: %i[id title slug custom_domain]),
           access_token:  tokens[:access_token],
           refresh_token: tokens[:refresh_token]
         }, status: :created

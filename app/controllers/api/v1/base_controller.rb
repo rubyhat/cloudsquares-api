@@ -19,60 +19,66 @@ module Api
       end
 
       def public_access_allowed?
-        # Переопределяется в контроллерах
+        # Переопределяется в контроллерах при необходимости
         false
       end
 
       private
 
+      # Достаём/кешируем текущего пользователя и ОДНОКРАТНО декодируем JWT,
+      # сохраняя payload в @jwt_payload (для set_current_agency и пр.)
+      def current_user
+        return @current_user if defined?(@current_user)
 
+        token   = bearer_token
+        payload = Auth::JwtService.decode_and_verify(token)
+        @jwt_payload = payload
+
+        @current_user =
+          if payload.present? && payload["type"] == "access"
+            User.find_by(id: payload["sub"])
+          else
+            nil
+          end
+      end
+
+      def jwt_payload
+        @jwt_payload
+      end
+
+      # Выбираем контекст агентства:
+      # 1) приоритет — agency_id из access-токена (важно для B2C и для явного выбора контекста на фронте)
+      # 2) иначе — дефолтное агентство сотрудника (UserAgency.is_default)
       def set_current_agency
         return unless current_user
 
-        # 1) Сотрудники: берём дефолтное агентство из UserAgency
-        agency = current_user&.user_agencies&.find_by(is_default: true)&.agency
-        if agency.present?
-          @current_agency = agency
-          Current.agency  = agency
-          return
-        end
-
-        # 2) B2C: если в access-токене есть agency_id — используем его как контекст
-        token   = request.headers["Authorization"]&.split&.last
-        payload = Auth::JwtService.decode_and_verify(token)
-        if payload && payload["agency_id"].present?
-          a = Agency.find_by(id: payload["agency_id"])
-          if a
-            @current_agency = a
-            Current.agency  = a
+        # 1) Контекст из токена
+        if jwt_payload && jwt_payload["agency_id"].present?
+          if (agency = Agency.find_by(id: jwt_payload["agency_id"]))
+            @current_agency = agency
+            Current.agency  = agency
+            return
           end
         end
-      end
 
+        # 2) Дефолтное агентство сотрудника
+        if (agency = current_user&.user_agencies&.find_by(is_default: true)&.agency)
+          @current_agency = agency
+          Current.agency  = agency
+        end
+      end
 
       def current_agency
         @current_agency
       end
 
+      def bearer_token
+        request.headers["Authorization"]&.split&.last
+      end
 
       # Аутентификация пользователя по access-токену
       def authenticate_user!
         render_unauthorized unless current_user
-      end
-
-      # Возвращает текущего пользователя на основе токена
-      #
-      # @return [User, nil]
-      def current_user
-        @current_user ||= begin
-                            token = request.headers["Authorization"]&.split&.last
-                            payload = Auth::JwtService.decode_and_verify(token && token)
-                            if payload.present? && payload["type"] == "access"
-                              User.find_by(id: payload["sub"])
-                            else
-                              nil
-                            end
-                          end
       end
     end
   end

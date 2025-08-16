@@ -14,3 +14,7 @@ en:
               taken: "This phone number is already taken"
             email:
               taken: "This email address is already taken"
+        contact:
+          attributes:
+            first_name:
+              blank: "Имя не может быть пустым"

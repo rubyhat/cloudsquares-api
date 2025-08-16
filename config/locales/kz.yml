@@ -14,3 +14,7 @@ kz:
               taken: "Бұл телефон нөмірі бұрыннан тіркелген"
             email:
               taken: "Бұл email бұрыннан тіркелген"
+        contact:
+          attributes:
+            first_name:
+              blank: "Имя не может быть пустым"

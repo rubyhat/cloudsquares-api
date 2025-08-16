@@ -12,3 +12,7 @@ ru:
               taken: "Этот номер телефона уже используется"
             email:
               taken: "Этот email уже зарегистрирован"
+        contact:
+          attributes:
+            first_name:
+              blank: "Имя не может быть пустым"

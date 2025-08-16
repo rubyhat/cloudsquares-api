@@ -5,20 +5,30 @@ module Api
       before_action :set_property, only: %i[show update destroy]
       after_action :verify_authorized
 
+      # TODO: Определять недвижимость агентства по имени хосту в продакшене! Сейчас временно передаем айди черзе параметры
       def index
         authorize Property
-        # TODO: Определять недвижимость агентства по имени хосту в продакшене! Сейчас временно передаем айди черзе параметры
-        properties = if Current.guest?
-           Property.available.where(status: :active, agency_id: temp_params[:agency_id]).includes(:property_location)
-        else
-           Property.available.where( agency_id: temp_params[:agency_id]).includes(:property_location)
-        end
 
-        render json: properties, each_serializer: PropertySerializer
+        agency = Agency.find_by(id: temp_params[:agency_id]) # все объекты в одном агентстве
+        base = Property
+                 .available
+                 .where(agency_id: agency&.id)
+                 .includes(:property_location, agent: :person)
+
+        properties = if Current.guest?
+                       base.where(status: :active)
+                     else
+                       base
+                     end
+
+        render json: properties,
+               each_serializer: PropertySerializer,
+               current_agency: agency
       end
 
+
       def show
-        @property = Property.find(params[:id])
+        @property = Property.includes(:property_location, agent: :person).find(params[:id])
         authorize @property
 
         # TODO: надо подумать, будем ли отдавать на просмотр удаленные объекты(отображать как "объявление в архиве") и другие статусы, кроме active ?
@@ -40,7 +50,9 @@ module Api
           ) unless  current_user&.admin? || current_user&.admin_manager?
         end
 
-        render json: @property, serializer: PropertySerializer, status: :ok
+        render json: @property,
+               serializer: PropertySerializer,
+               current_agency: @property.agency
       end
 
       def create
