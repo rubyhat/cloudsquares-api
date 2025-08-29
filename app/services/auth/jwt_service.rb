@@ -57,6 +57,7 @@ module Auth
       private
 
       # Имя для payload: ищем Contact пользователя в заданном агентстве, иначе в дефолтном.
+      # Если не нашли — пробуем профиль (для админов).
       def display_first_name_for(user, agency_id:)
         if user.person_id
           target_agency_id = agency_id || user.default_agency&.id
@@ -65,6 +66,9 @@ module Auth
             return contact.first_name if contact&.first_name.present?
           end
         end
+
+        return user.profile.first_name if user.profile&.first_name.present?
+
         user_name(user)
       rescue StandardError
         user_name(user)

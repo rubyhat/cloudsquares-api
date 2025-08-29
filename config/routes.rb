@@ -23,6 +23,7 @@ Rails.application.routes.draw do
 
       # Текущий пользователь
       get :me, to: "users#me"
+      patch "me", to: "users#update_me"
       resources :users
 
       # Агентства недвижимости

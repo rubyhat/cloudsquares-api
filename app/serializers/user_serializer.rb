@@ -1,9 +1,9 @@
-# app/serializers/user_serializer.rb
 # frozen_string_literal: true
 
 class UserSerializer < ActiveModel::Serializer
   attributes :id, :phone, :role, :country_code, :is_active,
-             :first_name, :last_name, :middle_name
+             :first_name, :last_name, :middle_name,
+             :timezone, :locale, :avatar_url
 
   attribute :email, if: :show_email?
   attribute :agency, if: :has_agency_role?
@@ -13,17 +13,37 @@ class UserSerializer < ActiveModel::Serializer
     object.person&.normalized_phone
   end
 
+  # --- ФИО ---
+  # Если передано instance_options[:prefer_profile_name] — берём имя из профиля
+  # (фолбэк на Contact). Иначе наоборот (как раньше).
   def first_name
-    contact_for_context&.first_name
+    if prefer_profile_name?
+      object.profile&.first_name || contact_for_context&.first_name
+    else
+      contact_for_context&.first_name || object.profile&.first_name
+    end
   end
 
   def last_name
-    contact_for_context&.last_name
+    if prefer_profile_name?
+      object.profile&.last_name || contact_for_context&.last_name
+    else
+      contact_for_context&.last_name || object.profile&.last_name
+    end
   end
 
   def middle_name
-    contact_for_context&.middle_name
+    if prefer_profile_name?
+      object.profile&.middle_name || contact_for_context&.middle_name
+    else
+      contact_for_context&.middle_name || object.profile&.middle_name
+    end
   end
+
+  # --- Профильные поля ---
+  def timezone   = object.profile&.timezone
+  def locale     = object.profile&.locale
+  def avatar_url = object.profile&.avatar_url
 
   def agency
     object.user_agencies.find_by(is_default: true)&.agency&.as_json(only: %i[id title slug custom_domain])
@@ -33,7 +53,6 @@ class UserSerializer < ActiveModel::Serializer
     %w[agent_admin agent_manager agent].include?(object.role)
   end
 
-  # Показ email: админы, сам пользователь, либо сотрудники одного агентства
   def show_email?
     current_user = scope || instance_options[:current_user]
     return false unless current_user
@@ -47,6 +66,10 @@ class UserSerializer < ActiveModel::Serializer
   end
 
   private
+
+  def prefer_profile_name?
+    ActiveModel::Type::Boolean.new.cast(instance_options[:prefer_profile_name])
+  end
 
   def contact_for_context
     @contact_for_context ||= begin
@@ -72,14 +95,7 @@ class UserSerializer < ActiveModel::Serializer
                                  return c if c
                                end
 
-                               # 3) fallback для B2C: берём ЛЮБОЙ контакт этой персоны (например, тот,
-                               #    что создали на этапе регистрации в конкретном агентстве)
-                               any = Contact.where(person_id: object.person_id).order(created_at: :asc).first
-                               return any if any
-
-                               # 4) последний шанс — ничего
-                               nil
+                               Contact.where(person_id: object.person_id).order(created_at: :asc).first
                              end
   end
-
 end

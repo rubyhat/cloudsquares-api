@@ -11,13 +11,45 @@ module Api
         return render_unauthorized unless user
 
         authorize user, :me?
-        render json: user, serializer: UserSerializer, current_agency: Current.agency, status: :ok
+        render json: user,
+               serializer: UserSerializer,
+               current_agency: Current.agency,
+               prefer_profile_name: true,
+               status: :ok
+      end
+
+      # PATCH /api/v1/me
+      def update_me
+        user = current_user
+        return render_unauthorized unless user
+
+        authorize user, :update_me?
+
+        result = Users::UserUpdaterService.call(
+          current_user: user,
+          target_user:  user,
+          agency_ctx:   Current.agency,
+          params:       me_params,     # может включать имя, профильные поля, email, пароль(+current_password)
+          mode:         :self,
+          name_target:  :auto          # self -> имя в профиль
+        )
+
+        render json: result.user,
+               serializer: UserSerializer,
+               current_agency: Current.agency,
+               prefer_profile_name: true,
+               status: :ok
+      rescue ActiveRecord::RecordInvalid => e
+        render_validation_errors(e.record)
       end
 
       # GET /api/v1/users
       def index
         users = policy_scope(User)
-        render json: users, each_serializer: UserSerializer, current_agency: Current.agency, status: :ok
+        render json: users,
+               each_serializer: UserSerializer,
+               current_agency: Current.agency,
+               status: :ok
       end
 
       # GET /api/v1/users/:id
@@ -25,7 +57,10 @@ module Api
         return render_user_deleted unless @user.is_active
 
         authorize @user
-        render json: @user, serializer: UserSerializer, current_agency: Current.agency, status: :ok
+        render json: @user,
+               serializer: UserSerializer,
+               current_agency: Current.agency,
+               status: :ok
       end
 
       # POST /api/v1/users
@@ -154,7 +189,6 @@ module Api
         authorize @user
 
         attrs = user_params
-        updated = false
 
         ActiveRecord::Base.transaction do
           # Если прилетел телефон — правим его в Person
@@ -172,52 +206,24 @@ module Api
             # Пытаемся обновить текущему Person телефон.
             # Если такой телефон уже занят другой Person, база не даст задвоить (уникальность).
             @user.person.update!(normalized_phone: pn)
-            updated = true
           end
 
-          # Если прилетели ФИО — правим/создаём Contact в рамках текущего агентства
-          if attrs.slice(:first_name, :last_name, :middle_name).values.any?(&:present?) && @current_agency
-            contact = Contact.find_or_initialize_by(agency_id: @current_agency.id, person_id: @user.person_id)
-
-            # важно: сначала присваиваем, потом сохраняем
-            contact.first_name  = attrs[:first_name].presence || contact.first_name || "—"
-            contact.last_name   = attrs[:last_name]   if attrs.key?(:last_name)
-            contact.middle_name = attrs[:middle_name] if attrs.key?(:middle_name)
-
-            contact.save!
-            updated = true
-          end
-
-
-          # Обновляем собственно User-поля, если пришли
-          user_updatable = {}
-          user_updatable[:email]         = attrs[:email]         if attrs.key?(:email)
-          user_updatable[:role]          = attrs[:role]          if attrs.key?(:role)
-          user_updatable[:country_code]  = attrs[:country_code]  if attrs.key?(:country_code)
-          if attrs[:password].present?
-            user_updatable[:password]              = attrs[:password]
-            user_updatable[:password_confirmation] = attrs[:password_confirmation]
-          end
-
-          if user_updatable.any?
-            unless @user.update(user_updatable)
-              return render_validation_errors(@user)
-            end
-            updated = true
-          end
-        end
-
-        if updated
-          render json: @user, serializer: UserSerializer, current_agency: Current.agency, status: :ok
-        else
-          render_success(
-            key: "users.nothing_to_update",
-            message: "Нет данных для обновления",
-            code: 200
+          # Остальное — через сервис
+          Users::UserUpdaterService.call(
+            current_user: current_user,
+            target_user:  @user,
+            agency_ctx:   @current_agency,     # ФИО пойдёт в Contact текущего агентства
+            params:       attrs.except(:phone),
+            mode:         :admin,               # т.к. редактируем чужого юзера (или себя, но Pundit уже пропустил)
+            name_target:  :auto
           )
         end
 
-        # === ВАЖНО: показываем ошибки того объекта, который упал ===
+        render json: @user,
+               serializer: UserSerializer,
+               current_agency: Current.agency,
+               status: :ok
+
       rescue ActiveRecord::RecordInvalid => e
         # Если уникальность телефона у Person сработала через валидации:
         if e.record.is_a?(Person) && e.record.errors.added?(:normalized_phone, :taken)
@@ -252,7 +258,6 @@ module Api
         )
       end
 
-
       # DELETE /api/v1/users/:id
       def destroy
         unless @user.is_active
@@ -279,11 +284,6 @@ module Api
 
       private
 
-      # Определение Агентства пользователя (оставляем для обратной совместимости)
-      def current_agency_for_user(user)
-        user&.user_agencies&.find_by(is_default: true)&.agency
-      end
-
       def set_user
         @user = User.find(params[:id])
       rescue ActiveRecord::RecordNotFound
@@ -293,16 +293,30 @@ module Api
         )
       end
 
-      # Разрешённые параметры. phone + ФИО — это для Person/Contact.
+      # Личные данные для /me
+      def me_params
+        params.require(:user).permit(
+          :first_name, :last_name, :middle_name, # self-name -> профиль
+          :timezone, :locale, :avatar_url,
+          :email,
+          :password, :password_confirmation, :current_password,
+          notification_prefs: {},
+          ui_prefs: {}
+        )
+      end
+
+      # Параметры для /users (агентский/админский апдейт)
       def user_params
         params.require(:user).permit(
-          :phone,                    # -> Person.normalized_phone
-          :email,                    # хранится в users (учётный), агентский email — в Contact
-          :password,
-          :password_confirmation,
-          :first_name, :last_name, :middle_name, # -> Contact внутри текущего агентства
+          :phone,
+          :email,
+          :password, :password_confirmation,
+          :first_name, :last_name, :middle_name, # -> Contact текущего агентства
           :role,
-          :country_code
+          :country_code, # оставляем, если где-то используется
+          :timezone, :locale, :avatar_url,
+          notification_prefs: {},
+          ui_prefs: {}
         )
       end
     end

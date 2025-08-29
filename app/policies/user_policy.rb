@@ -75,6 +75,13 @@ class UserPolicy < ApplicationPolicy
     platform_admin? || same_agency_or_self?
   end
 
+  # Может ли пользователь обновить информацию о себе через /update-me
+  #
+  # @return [Boolean]
+  def update_me?
+    me?
+  end
+
   # Скоуп для выборки доступных пользователей
   #
   # Возвращает:

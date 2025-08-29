@@ -18,6 +18,9 @@ class User < ApplicationRecord
   has_many :property_comments, dependent: :nullify
   has_many :property_buy_requests, dependent: :nullify
 
+  has_one  :profile, class_name: "UserProfile", dependent: :destroy
+  after_create :ensure_profile!
+
   # Текущие доступные регионы
   VALID_COUNTRY_CODES = %w[RU KZ BY].freeze
 
@@ -43,6 +46,10 @@ class User < ApplicationRecord
   # Возвращает агентство по умолчанию
   def default_agency
     user_agencies.find_by(is_default: true)&.agency
+  end
+
+  def ensure_profile!
+    profile || build_profile(timezone: "UTC", locale: I18n.default_locale.to_s).save!
   end
 
   private

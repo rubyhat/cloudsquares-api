@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_13_140042) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_20_205624) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -331,6 +331,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_13_140042) do
     t.index ["user_id"], name: "index_user_agencies_on_user_id"
   end
 
+  create_table "user_profiles", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "user_id", null: false
+    t.string "first_name"
+    t.string "last_name"
+    t.string "middle_name"
+    t.string "timezone", default: "UTC", null: false
+    t.string "locale", default: "ru", null: false
+    t.string "avatar_url"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_user_profiles_on_user_id", unique: true
+  end
+
   create_table "users", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "email", null: false
     t.string "password_digest", null: false
@@ -376,5 +389,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_13_140042) do
   add_foreign_key "property_photos", "properties"
   add_foreign_key "user_agencies", "agencies"
   add_foreign_key "user_agencies", "users"
+  add_foreign_key "user_profiles", "users"
   add_foreign_key "users", "people"
 end

@@ -61,12 +61,31 @@ class ApplicationPolicy
   # Агентская принадлежность и владение
 
   # Сущность принадлежит текущему агентству
-  def same_agency?
-    return false unless Current.agency
-    return false unless record.is_a?(User)
+  def same_agency?(explicit_agency_id = nil)
+    ctx_id = Current.agency&.id
+    return false unless ctx_id
 
-    UserAgency.exists?(agency_id: Current.agency.id, user_id: record.id)
+    # Явно передали agency_id
+    return ctx_id == explicit_agency_id if explicit_agency_id.present?
+
+    # У записи есть agency_id
+    if record.respond_to?(:agency_id) && record.agency_id.present?
+      return record.agency_id == ctx_id
+    end
+
+    # Сама запись — Agency
+    if record.is_a?(Agency)
+      return record.id == ctx_id
+    end
+
+    # Сама запись — User (проверяем membership)
+    if record.is_a?(User)
+      return UserAgency.exists?(agency_id: ctx_id, user_id: record.id)
+    end
+
+    false
   end
+
 
   # Сущность принадлежит агентству или представляет самого пользователя
   def same_agency_or_self?
