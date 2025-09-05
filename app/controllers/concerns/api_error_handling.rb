@@ -17,6 +17,10 @@ module ApiErrorHandling
     rescue_from JWT::ExpiredSignature, with: :render_expired_token
     rescue_from ActiveRecord::RecordNotUnique, with: :render_record_not_unique
 
+    # Важно: перехватываем валидации, упавшие на уровне ассоциаций/колбэков,
+    # чтобы вернуть корректный JSON с подробностями.
+    rescue_from ActiveRecord::RecordInvalid, with: :render_record_invalid
+
     # Базовая обработка ошибок 500+ todo: надо протестить
     rescue_from StandardError do |exception|
       logger.error "[#{exception.class}] #{exception.message}"
@@ -32,6 +36,24 @@ module ApiErrorHandling
   end
 
   private
+
+
+  # Унифицированный рендер ошибок валидации для поднятых исключений
+  #
+  # @param exception [ActiveRecord::RecordInvalid]
+  # @return [void]
+  def render_record_invalid(exception)
+    resource = exception.record
+    render json: {
+      error: {
+        key: "validation.failed",
+        message: "Ошибка валидации",
+        code: 422,
+        status: :unprocessable_entity,
+        details: extract_full_errors(resource)
+      }
+    }, status: :unprocessable_entity
+  end
 
   # Обработка уникальности на уровне базы (например, индекс tax_id)
   def render_record_not_unique(exception = nil)
@@ -184,8 +206,47 @@ module ApiErrorHandling
         message: "Ошибка валидации",
         code: 422,
         status: :unprocessable_entity,
-        details: resource.errors.messages
+        details: extract_full_errors(resource)
       }
     }, status: :unprocessable_entity
+  end
+
+  # Глубокий сбор ошибок: собственные + has_one/has_many (включая nested_attributes)
+  #
+  # @param resource [ActiveRecord::Base]
+  # @return [Hash] хэш с сообщениями, включая дочерние записи
+  def extract_full_errors(resource)
+    # Собственные ошибки ресурса
+    all = resource.errors.to_hash(true)
+
+    # Пробегаемся по ассоциациям и добавляем их ошибки в details.
+    resource.class.reflect_on_all_associations.each do |assoc|
+      next unless %i[has_one has_many].include?(assoc.macro)
+
+      associated = safe_associated(resource, assoc.name)
+      next if associated.blank?
+
+      if associated.is_a?(Enumerable)
+        associated.each_with_index do |rec, idx|
+          next if rec.errors.empty?
+          all["#{assoc.name}[#{idx}]"] = rec.errors.to_hash(true)
+        end
+      else
+        all[assoc.name] = associated.errors.to_hash(true) unless associated.errors.empty?
+      end
+    end
+
+    all
+  end
+
+  # Безопасно получить ассоциированные записи без выбрасывания ошибок
+  #
+  # @param resource [ActiveRecord::Base]
+  # @param name [Symbol]
+  # @return [ActiveRecord::Base, Array<ActiveRecord::Base>, nil]
+  def safe_associated(resource, name)
+    resource.public_send(name)
+  rescue StandardError
+    nil
   end
 end
