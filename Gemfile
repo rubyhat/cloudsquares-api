@@ -12,7 +12,7 @@ gem "tzinfo-data", platforms: %i[windows jruby]
 gem "rack-cors", require: "rack/cors"
 
 # 🧠 Background Jobs & Caching
-gem "sidekiq", "~> 8.0"
+gem "sidekiq", "~> 8.1"
 gem "sidekiq-unique-jobs"
 gem "redis", "~> 5.4"
 gem "solid_cache"
